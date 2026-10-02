@@ -1,0 +1,6 @@
+{
+  "name": "quick-actions",
+  "version": "0.1.0",
+  "description": "A band above the prompt with git indicators and buttons that run predefined prompts, skills and shell commands",
+  "types": "./types/index.d.ts"
+}
