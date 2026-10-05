@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import type { On } from 'claude-code'
+import type { MatchedHook, On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
 /** Git output of a feature branch: dirty, 2 ahead of its upstream, 5 behind origin/main. */
@@ -35,7 +35,11 @@ function fakeGit(on: On, calls: Array<Array<string>>) {
   })
 }
 
-async function mountBand($: Engine) {
+/** What the band beneath the plugin draws; the engine's own drawing by default, as the live band without a survey. */
+type Below = MatchedHook<'ui.render', { component: 'AbovePrompt' }>
+
+async function mountBand($: Engine, on: On, below: Below = () => ({ type: 'engine', ref: 0 })) {
+  on('ui.render', { component: 'AbovePrompt' }, below)
   await $.session.start({ cwd: '/repo', surface: 'terminal' } as Parameters<Engine['session']['start']>[0])
   return $.ui.mount({
     plugin: 'quick-actions',
@@ -57,7 +61,7 @@ test('should draw the git counts and only the saved actions', async ($, on) => {
   mock.store(on, { actions: SAVED })
 
   // Act
-  const band = await mountBand($)
+  const band = await mountBand($, on)
   const texts = (await band.findAll({ type: 'Text' })).map(found => found.text).join(' ')
   const buttons = (await band.findAll({ type: 'Button' })).map(found => [found.key, found.text])
 
@@ -81,7 +85,7 @@ test('should run a saved command with its arguments on press', async ($, on) => 
     commands.push([e.command, e.args])
     return { text: '' }
   })
-  const band = await mountBand($)
+  const band = await mountBand($, on)
 
   // Act
   await band.press({ key: 'custom-c1' })
@@ -95,7 +99,7 @@ test('should show a saved shell action and run it with sh -c on press', async ($
   const calls: Array<Array<string>> = []
   fakeGit(on, calls)
   mock.store(on, { actions: [{ id: 'x1', label: 'test', hotkey: '2', icon: '', color: '', kind: 'shell', text: 'pnpm test' }] })
-  const band = await mountBand($)
+  const band = await mountBand($, on)
 
   // Act
   const button = await band.find({ key: 'custom-x1' })
@@ -137,7 +141,7 @@ test('should save the prompt box as a new action and clear the box', async ($, o
     closed.push(e.id)
     return { value: undefined }
   })
-  const band = await mountBand($)
+  const band = await mountBand($, on)
 
   // Act
   await band.press({ key: 'add' })
@@ -172,7 +176,7 @@ test('should show why a save was refused inside the form', async ($, on) => {
   mock.store(on)
   on('prompt.read', () => ({ value: { text: '', cursor: 0 } }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
-  const band = await mountBand($)
+  const band = await mountBand($, on)
   await band.press({ key: 'add' })
   const pane = await $.ui.mount({
     plugin: 'quick-actions',
@@ -200,13 +204,29 @@ test('should show the saved actions outside a git repository', async ($, on) => 
   mock.store(on, { actions: SAVED })
 
   // Act
-  const band = await mountBand($)
+  const band = await mountBand($, on)
   const buttons = (await band.findAll({ type: 'Button' })).map(found => found.key)
   const texts = (await band.findAll({ type: 'Text' })).map(found => found.text)
 
   // Assert
   expect(buttons).toEqual(['custom-c1', 'custom-r1', 'add', 'manage'])
   expect(texts).toEqual([])
+})
+
+test('should draw the band of a plugin beneath under its own', async ($, on) => {
+  // Arrange
+  fakeGit(on, [])
+  mock.store(on, { actions: SAVED })
+
+  // Act
+  const band = await mountBand($, on, ($, e) => {
+    const { Button } = $.ui.resolve(e)
+    return Button({ key: 'below', label: 'source control', onPress: () => {} })
+  })
+  const buttons = (await band.findAll({ type: 'Button' })).map(found => found.key)
+
+  // Assert
+  expect(buttons).toEqual(['custom-c1', 'custom-r1', 'add', 'manage', 'below'])
 })
 
 test('should close the pane when the manage button is pressed while it is open', async ($, on) => {
@@ -229,7 +249,7 @@ test('should close the pane when the manage button is pressed while it is open',
     calls.push(`close ${e.id}`)
     return { value: undefined }
   })
-  const band = await mountBand($)
+  const band = await mountBand($, on)
 
   // Act
   await band.press({ key: 'manage' })
@@ -253,7 +273,7 @@ test('should draw one band per section with its symbol when the layout is separa
   mock.store(on, { actions: SAVED, layout: 'separate' })
 
   // Act
-  const band = await mountBand($)
+  const band = await mountBand($, on)
   const rows = (await band.findAll({ type: 'Box' })).map(found => found.key).filter(key => key?.startsWith('row'))
   const texts = (await band.findAll({ type: 'Text' })).map(found => found.text)
   const buttons = (await band.findAll({ type: 'Button' })).map(found => found.key)
@@ -274,7 +294,7 @@ test('should switch the band layout from the list and keep it in the store', asy
     return { value: undefined }
   })
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
-  const band = await mountBand($)
+  const band = await mountBand($, on)
   await band.press({ key: 'manage' })
   const pane = await $.ui.mount({
     plugin: 'quick-actions',

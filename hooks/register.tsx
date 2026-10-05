@@ -347,6 +347,11 @@ export const register: Register = on => {
     if (e.props.hasSurvey) {
       return next(e)
     }
+    /**
+     * The band of the plugins beneath, drawn under this one. The engine's own
+     * drawing holds only the surveys, so without a survey it adds nothing.
+     */
+    const below = await next(e)
     /** Null outside a git repository: the actions still show, only the git counts are left out. */
     const git = await read($, gitState)
     const isPaneOpen = await read($, paneOpenState)
@@ -417,12 +422,21 @@ export const register: Register = on => {
             ({ actions }) => actions.length > 0,
           )
         : []
-    return (
-      <Box flexDirection="column" paddingLeft={1} paddingRight={3} marginTop={1}>
+    const band = (
+      <Box key="quick-actions" flexDirection="column" paddingLeft={1} paddingRight={3} marginTop={1}>
         {/* The right padding keeps the last button off the band's own collapse control. */}
         {rows.length === 0
           ? row('row', shown, null, true)
           : rows.map(({ section, actions }, index) => row(`row-${section.id}`, actions, section, index === 0))}
+      </Box>
+    )
+    if (below === null || below === undefined || below.type === 'engine') {
+      return band
+    }
+    return (
+      <Box flexDirection="column">
+        {band}
+        {below}
       </Box>
     )
   })
