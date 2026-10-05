@@ -68,17 +68,6 @@ export function draftFromPrompt(input: string, returnTo: Draft['returnTo']): Dra
   return { id: null, source: typed === '' ? null : typed, returnTo, error: null, picking: null, label, hotkey: '', icon: '', color: '', kind, text }
 }
 
-/** The text as the prompt box would show it, with the kind's prefix. */
-export function promptText(draft: Pick<Draft, 'kind' | 'text'>): string {
-  if (draft.kind === 'command') {
-    return `/${draft.text}`
-  }
-  if (draft.kind === 'shell') {
-    return `! ${draft.text}`
-  }
-  return draft.text
-}
-
 /**
  * The text as it is saved: trimmed, and without the prefix a person may type
  * out of habit, `/` before a command and `!` before a shell command.

@@ -189,3 +189,108 @@ test('should show why a save was refused inside the form', async ($, on) => {
   // Assert
   expect(error?.text).toBe('The label is empty.')
 })
+
+test('should show the saved actions outside a git repository', async ($, on) => {
+  // Arrange
+  on('session.start', () => ({ cwd: '/home' }))
+  on('session.cwd', () => ({ value: '/home' }))
+  on('process.run', () => ({
+    value: { exitCode: 128, stdout: '', stderr: 'not a git repository', isStdoutTruncated: false, isStderrTruncated: false },
+  }))
+  mock.store(on, { actions: SAVED })
+
+  // Act
+  const band = await mountBand($)
+  const buttons = (await band.findAll({ type: 'Button' })).map(found => found.key)
+  const texts = (await band.findAll({ type: 'Text' })).map(found => found.text)
+
+  // Assert
+  expect(buttons).toEqual(['custom-c1', 'custom-r1', 'add', 'manage'])
+  expect(texts).toEqual([])
+})
+
+test('should close the pane when the manage button is pressed while it is open', async ($, on) => {
+  // Arrange
+  fakeGit(on, [])
+  mock.clock(on)
+  mock.store(on)
+  on('ui.panes', () => ({ value: [] }))
+  const logs: Array<string> = []
+  on('ui.log', ($, e) => {
+    logs.push(e.text)
+    return { value: undefined }
+  })
+  const calls: Array<string> = []
+  on('ui.open', ($, e) => {
+    calls.push(`open ${e.id}`)
+    return { value: { isPlaced: true as const } }
+  })
+  on('ui.close', ($, e) => {
+    calls.push(`close ${e.id}`)
+    return { value: undefined }
+  })
+  const band = await mountBand($)
+
+  // Act
+  await band.press({ key: 'manage' })
+  await band.press({ key: 'manage' })
+  await band.press({ key: 'manage' })
+
+  // Assert
+  expect(logs).toEqual([])
+  expect(calls).toEqual([
+    'close quick-actions-edit',
+    'close quick-actions-manage',
+    'open quick-actions',
+    'close quick-actions',
+    'open quick-actions',
+  ])
+})
+
+test('should draw one band per section with its symbol when the layout is separate', async ($, on) => {
+  // Arrange
+  fakeGit(on, [])
+  mock.store(on, { actions: SAVED, layout: 'separate' })
+
+  // Act
+  const band = await mountBand($)
+  const rows = (await band.findAll({ type: 'Box' })).map(found => found.key).filter(key => key?.startsWith('row'))
+  const texts = (await band.findAll({ type: 'Text' })).map(found => found.text)
+  const buttons = (await band.findAll({ type: 'Button' })).map(found => found.key)
+
+  // Assert
+  expect(rows).toEqual(['row-commands', 'row-prompts'])
+  expect(texts).toEqual(['/', '* ↑2 main↓5 ', '>'])
+  expect(buttons).toEqual(['custom-c1', 'add', 'manage', 'custom-r1'])
+})
+
+test('should switch the band layout from the list and keep it in the store', async ($, on) => {
+  // Arrange
+  fakeGit(on, [])
+  const store = new Map<string, unknown>([['actions', SAVED]])
+  on('store.get', ($, e) => ({ value: store.get(e.key) }))
+  on('store.set', ($, e) => {
+    store.set(e.key, e.value)
+    return { value: undefined }
+  })
+  on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  const band = await mountBand($)
+  await band.press({ key: 'manage' })
+  const pane = await $.ui.mount({
+    plugin: 'quick-actions',
+    surface: 'terminal',
+    component: 'Pane',
+    requestId: 'quick-actions',
+    props: {} as never,
+  })
+
+  // Act
+  await pane.press({ key: 'setting-layout' })
+  const setting = await pane.find({ key: 'setting-layout' })
+  const texts = (await band.findAll({ type: 'Text' })).map(found => found.text)
+
+  // Assert
+  expect(store.get('layout')).toBe('separate')
+  expect(setting?.text).toBe('Bands     one band per section ›')
+  expect(texts).toEqual(['/', '* ↑2 main↓5 ', '>'])
+})

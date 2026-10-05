@@ -54,6 +54,9 @@ export type Draft = Omit<CustomAction, 'id'> & {
   picking: DraftSetting | null
 }
 
+/** Whether the band holds all actions in one row, or gives each section its own row. */
+export type BandLayout = 'one' | 'separate'
+
 /** The settings of the form that are picked from a list. */
 export type DraftSetting = 'kind' | 'icon' | 'color' | 'hotkey'
 
@@ -65,6 +68,9 @@ declare module 'claude-code' {
       draft: Draft | null
       /** The custom action whose delete button was pressed once and waits for the second press. */
       pendingDelete: string | null
+      /** Whether the pane is open and drawn; a pane that waits undrawn counts as closed. */
+      isPaneOpen: boolean
+      layout: BandLayout
     }
   }
 }

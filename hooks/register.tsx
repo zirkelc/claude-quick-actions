@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { CustomAction, CustomKind, Draft, DraftSetting, GitState } from '../types'
+import type { BandLayout, CustomAction, CustomKind, Draft, DraftSetting, GitState } from '../types'
 import {
   type Action,
   COLORS,
@@ -12,7 +12,6 @@ import {
   type Section,
   move,
   normalizeText,
-  promptText,
   toAction,
 } from './actions'
 import { basename, parseStatus } from './git'
@@ -26,8 +25,11 @@ const LEGACY_PANES = ['quick-actions-edit', 'quick-actions-manage']
 const PANE = 'quick-actions'
 const PANE_OPTIONS = { id: PANE, title: 'Quick actions', focus: true, closeOnEscape: true, holdToasts: true, rows: 20 } as const
 
-/** Keys in the store, which keeps the person's actions across sessions. */
+/** Keys in the store, which keeps the person's actions and settings across sessions. */
 const STORE_ACTIONS = 'actions'
+const STORE_LAYOUT = 'layout'
+
+const LAYOUTS: Record<BandLayout, string> = { one: 'one band', separate: 'one band per section' }
 
 type Option = { value: string; label: string; hint?: string }
 
@@ -41,11 +43,11 @@ const KINDS: Array<Option & { value: CustomKind }> = [
 const ICON_OPTIONS: Array<Option> = [{ value: '', label: 'none' }, ...ICONS.map(icon => ({ value: icon, label: icon }))]
 const COLOR_OPTIONS: Array<Option> = [{ value: '', label: 'default' }, ...COLORS.map(color => ({ value: color, label: color }))]
 
-/** The manage pane's sections, in order. */
-const SECTIONS: Array<{ id: Section; title: string; hint: string; color: string }> = [
-  { id: 'commands', title: 'Commands', hint: 'skills and slash commands, run directly', color: 'blue' },
-  { id: 'prompts', title: 'Prompts', hint: 'text for Claude, sent or put in the prompt box', color: 'magenta' },
-  { id: 'shell', title: 'Shell', hint: 'run on this machine, without Claude', color: 'cyan' },
+/** The sections, in order; the symbol in its color marks a section in the pane and on its own band. */
+const SECTIONS: Array<{ id: Section; title: string; hint: string; color: string; symbol: string }> = [
+  { id: 'commands', title: 'Commands', hint: 'skills and slash commands, run directly', color: 'blue', symbol: '/' },
+  { id: 'prompts', title: 'Prompts', hint: 'text for Claude, sent or put in the prompt box', color: 'magenta', symbol: '>' },
+  { id: 'shell', title: 'Shell', hint: 'run on this machine, without Claude', color: 'cyan', symbol: '$' },
 ]
 
 /** Digits in keyboard order; a digit hotkey works from an empty prompt box. */
@@ -63,6 +65,8 @@ const gitState = atom({ plugin: 'quick-actions', key: 'git' } as const, null)
 const customState = atom({ plugin: 'quick-actions', key: 'custom' } as const, [])
 const draftState = atom({ plugin: 'quick-actions', key: 'draft' } as const, null)
 const pendingDeleteState = atom({ plugin: 'quick-actions', key: 'pendingDelete' } as const, null)
+const paneOpenState = atom({ plugin: 'quick-actions', key: 'isPaneOpen' } as const, false)
+const layoutState = atom({ plugin: 'quick-actions', key: 'layout' } as const, 'one')
 
 /**
  * Reads the git state of `cwd`, or null outside a repository. Every call skips
@@ -112,7 +116,7 @@ async function readGit($: EngineInterface, cwd: string): Promise<GitState | null
   return { ...state, worktree, base, baseBehind }
 }
 
-/** Reads the git state and the saved actions again; the latter so changes from other sessions show up. */
+/** Reads the git state, the saved actions and the layout again; the latter so changes from other sessions show up. */
 async function refresh($: EngineInterface) {
   /** Started from timers and buttons without a caller to report to, so a failure goes to the debug log. */
   try {
@@ -120,6 +124,8 @@ async function refresh($: EngineInterface) {
     await update($, gitState, () => git)
     const custom = await $.store.get(STORE_ACTIONS)
     await update($, customState, () => (Array.isArray(custom) ? (custom as Array<CustomAction>) : []))
+    const layout = await $.store.get(STORE_LAYOUT)
+    await update($, layoutState, () => (layout === 'separate' ? 'separate' : 'one'))
   } catch (error) {
     $.ui.log(`refresh failed: ${String(error)}`, { to: 'debug' })
   }
@@ -130,10 +136,43 @@ async function writeCustom($: EngineInterface, custom: Array<CustomAction>) {
   await update($, customState, () => custom)
 }
 
+async function writeLayout($: EngineInterface, layout: BandLayout) {
+  await $.store.set(STORE_LAYOUT, layout)
+  await update($, layoutState, () => layout)
+}
+
+/**
+ * Opens the pane and says in the transcript when it is not drawn. Called before
+ * any other await of a press, so the engine counts the open as the person's: a
+ * pane opened unasked waits undrawn below 144 terminal columns.
+ */
+async function openPane($: EngineInterface) {
+  const opened = await $.ui.open(PANE_OPTIONS)
+  await update($, paneOpenState, () => opened.isPlaced)
+  if (!opened.isPlaced) {
+    $.ui.log(`The quick actions pane is open but not drawn: ${JSON.stringify(opened.reason)}`)
+  }
+}
+
+/**
+ * Closes the pane. A close the mod makes itself does not always reach its own
+ * close hook, so the open flag is cleared here as well.
+ */
+async function closePane($: EngineInterface) {
+  await $.ui.close({ id: PANE })
+  await update($, paneOpenState, () => false)
+}
+
+/** Runs a press's work, and says in the transcript when it fails; a press has no caller to report to. */
+function report($: EngineInterface, what: string, work: Promise<unknown>) {
+  work.catch(error => $.ui.log(`Quick actions: ${what} failed: ${String(error)}`))
+}
+
 /** Opens the pane on the list of actions. */
 async function openList($: EngineInterface) {
+  const opened = openPane($)
   await update($, draftState, () => null)
-  await $.ui.open(PANE_OPTIONS)
+  await opened
 }
 
 /**
@@ -141,9 +180,10 @@ async function openList($: EngineInterface) {
  * with what the prompt box holds; from the list it starts empty.
  */
 async function startAdd($: EngineInterface, returnTo: Draft['returnTo']) {
+  const opened = openPane($)
   const text = returnTo === 'band' ? (await $.prompt.read()).text : ''
   await update($, draftState, () => draftFromPrompt(text, returnTo))
-  await $.ui.open(PANE_OPTIONS)
+  await opened
 }
 
 async function startEdit($: EngineInterface, action: CustomAction) {
@@ -164,7 +204,7 @@ async function startEdit($: EngineInterface, action: CustomAction) {
 async function leaveForm($: EngineInterface, draft: Draft) {
   await update($, draftState, () => null)
   if (draft.returnTo === 'band') {
-    await $.ui.close({ id: PANE })
+    await closePane($)
   }
 }
 
@@ -256,6 +296,9 @@ export const register: Register = on => {
      * any more, so they would stay empty. A failed close must not stop the start.
      */
     await Promise.all(LEGACY_PANES.map(id => $.ui.close({ id }).catch(() => undefined)))
+    /** A hot reload can find the pane still open. A failed read must not stop the start either. */
+    const panes = await $.ui.panes().catch(() => [])
+    await update($, paneOpenState, () => panes.some(pane => pane.id === PANE && pane.isPlaced))
     await refresh($)
     $.clock.every(REFRESH_MS, () => void refresh($))
     return started
@@ -279,9 +322,15 @@ export const register: Register = on => {
    * from a form opened in the list back to the list; only then it closes.
    */
   on('ui.close', { id: PANE }, async ($, e, next) => {
+    /** Lets the close through and clears the open flag, for closes the mod did not make itself (Esc, the engine's mark). */
+    const close = async () => {
+      const closed = await next(e)
+      await update($, paneOpenState, () => false)
+      return closed
+    }
     const draft = await read($, draftState)
     if (e.origin.kind !== 'person' || draft === null) {
-      return next(e)
+      return close()
     }
     if (draft.picking !== null) {
       await editDraft($, { picking: null })
@@ -291,17 +340,20 @@ export const register: Register = on => {
       await update($, draftState, () => null)
       return { value: undefined }
     }
-    return next(e)
+    return close()
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const git = await read($, gitState)
-    if (e.props.hasSurvey || git === null) {
+    if (e.props.hasSurvey) {
       return next(e)
     }
+    /** Null outside a git repository: the actions still show, only the git counts are left out. */
+    const git = await read($, gitState)
+    const isPaneOpen = await read($, paneOpenState)
 
     const { Box, Button, Text } = $.ui.resolve(e)
     const shown = (await read($, customState)).map(toAction)
+    const layout = await read($, layoutState)
 
     /** One action: a bracketed button with the icon inside the label; the hotkey works but is not drawn. */
     const item = (action: Action) => (
@@ -313,26 +365,64 @@ export const register: Register = on => {
       />
     )
 
-    const status = [
-      git.isDirty ? '*' : '',
-      git.ahead > 0 ? `↑${git.ahead}` : '',
-      git.behind > 0 ? `↓${git.behind}` : '',
-      git.baseBehind > 0 ? `${git.base?.replace(/^origin\//, '')}↓${git.baseBehind}` : '',
-    ].filter(part => part !== '')
+    const status =
+      git === null
+        ? []
+        : [
+            git.isDirty ? '*' : '',
+            git.ahead > 0 ? `↑${git.ahead}` : '',
+            git.behind > 0 ? `↓${git.behind}` : '',
+            git.baseBehind > 0 ? `${git.base?.replace(/^origin\//, '')}↓${git.baseBehind}` : '',
+          ].filter(part => part !== '')
 
-    return (
-      <Box flexDirection="row" justifyContent="space-between" columnGap={2} paddingLeft={1} paddingRight={3}>
+    const controls = (
+      <Box key="controls" flexDirection="row" columnGap={1} flexShrink={0}>
+        {status.length > 0 && <Text color="yellow">{status.join(' ')} </Text>}
+        <Button key="add" label="+" variant="primary" onPress={() => report($, 'opening the form', startAdd($, 'band'))} />
+        {/* Opens the list, or closes the pane when it is open in any view. */}
+        <Button
+          key="manage"
+          label="≡"
+          onPress={() =>
+            isPaneOpen ? report($, 'closing the pane', closePane($)) : report($, 'opening the list', openList($))
+          }
+        />
+      </Box>
+    )
+
+    /**
+     * One row of the band: its actions left, after the section's symbol when
+     * given, and the controls right on the first row only.
+     */
+    const row = (key: string, actions: Array<Action>, section: (typeof SECTIONS)[number] | null, isFirst: boolean) => (
+      <Box key={key} flexDirection="row" justifyContent="space-between" columnGap={2}>
         {/* No wrapping: a wrapping row that may shrink reserves a second, empty line. Room past the
-            band's width is cut instead. The right padding keeps the last button off the band's
-            own collapse control. */}
+            band's width is cut instead. */}
         <Box flexDirection="row" columnGap={2} flexShrink={1} overflow="hidden">
-          {shown.map(item)}
+          {section !== null && (
+            <Text key={`symbol-${section.id}`} bold color={section.color}>
+              {section.symbol}
+            </Text>
+          )}
+          {actions.map(item)}
         </Box>
-        <Box flexDirection="row" columnGap={1} flexShrink={0}>
-          {status.length > 0 && <Text color="yellow">{status.join(' ')} </Text>}
-          <Button key="add" label="+" variant="primary" onPress={() => void startAdd($, 'band')} />
-          <Button key="manage" label="≡" onPress={() => void openList($)} />
-        </Box>
+        {isFirst && controls}
+      </Box>
+    )
+
+    /** Separate bands leave out the sections without actions; with no actions at all one row holds the controls. */
+    const rows =
+      layout === 'separate'
+        ? SECTIONS.map(section => ({ section, actions: shown.filter(action => sectionOf(action.kind) === section.id) })).filter(
+            ({ actions }) => actions.length > 0,
+          )
+        : []
+    return (
+      <Box flexDirection="column" paddingLeft={1} paddingRight={3} marginTop={1}>
+        {/* The right padding keeps the last button off the band's own collapse control. */}
+        {rows.length === 0
+          ? row('row', shown, null, true)
+          : rows.map(({ section, actions }, index) => row(`row-${section.id}`, actions, section, index === 0))}
       </Box>
     )
   })
@@ -346,12 +436,18 @@ export const register: Register = on => {
     const draft = await read($, draftState)
     const custom = await read($, customState)
     const pendingDelete = await read($, pendingDeleteState)
-    const close = () => void $.ui.close({ id: PANE })
+    const layout = await read($, layoutState)
+    const close = () => report($, 'closing the pane', closePane($))
 
+    /**
+     * A pane opened inline above the prompt gets the engine's own close mark;
+     * only a docked pane (the fullscreen layout) needs one of ours.
+     */
+    const isDocked = e.viewport?.isFullscreen !== false
     const header = (title: string) => (
       <Box flexDirection="row" justifyContent="space-between">
         <Text bold>{title}</Text>
-        <Button key="close" label="✕" plain dimColor role="dismiss" onPress={close} />
+        {isDocked && <Button key="close" label="✕" plain dimColor role="dismiss" onPress={close} />}
       </Box>
     )
 
@@ -504,7 +600,6 @@ export const register: Register = on => {
       const isPeer = (other: CustomAction) => sectionOf(other.kind) === sectionOf(action.kind)
       const peers = custom.filter(isPeer)
       const position = peers.indexOf(action)
-      const text = promptText(action)
       return (
         <Box key={`row-${action.id}`} flexDirection="row" justifyContent="space-between" columnGap={1}>
           <Box flexDirection="row" columnGap={1} flexShrink={1}>
@@ -515,12 +610,6 @@ export const register: Register = on => {
             {action.kind === 'fill' && (
               <Text color="blue" dimColor>
                 fill
-              </Text>
-            )}
-            {/* The text only adds something when it differs from the label. */}
-            {text !== action.label && action.text !== action.label && (
-              <Text dimColor wrap="truncate-end">
-                {text}
               </Text>
             )}
           </Box>
@@ -552,13 +641,13 @@ export const register: Register = on => {
     }
 
 
-    const section = ({ id, title, hint, color }: (typeof SECTIONS)[number]) => {
+    const section = ({ id, title, hint, color, symbol }: (typeof SECTIONS)[number]) => {
       const own = custom.filter(action => sectionOf(action.kind) === id)
       return (
         <Box key={`section-${id}`} flexDirection="column">
           <Box flexDirection="row" columnGap={1}>
             <Text bold color={color}>
-              {title}
+              {symbol} {title}
             </Text>
             <Text dimColor>{hint}</Text>
           </Box>
@@ -574,6 +663,18 @@ export const register: Register = on => {
       <Box flexDirection="column" rowGap={1} paddingX={1}>
         {header('Quick actions')}
         {SECTIONS.map(section)}
+        <Box key="section-settings" flexDirection="column">
+          <Text bold>Settings</Text>
+          <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
+            {/* Two values, so a press toggles, as the config menu does for a switch. */}
+            <Button
+              key="setting-layout"
+              label={`${'Bands'.padEnd(10)}${LAYOUTS[layout]} ›`}
+              plain
+              onPress={() => void writeLayout($, layout === 'one' ? 'separate' : 'one')}
+            />
+          </Box>
+        </Box>
         <Box flexDirection="row" columnGap={2}>
           <Button key="new" label="New action" variant="primary" onPress={() => void startAdd($, 'list')} />
           <Text dimColor>Esc closes</Text>

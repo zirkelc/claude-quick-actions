@@ -24,14 +24,21 @@ An action can also have an icon, a color for that icon, and a digit hotkey. A di
 ## Usage
 
 - **Add:** type the action in the prompt box (`/commit`, `! pnpm test` or a prompt), then press `+`. The form opens prefilled, with the type taken from the prefix.
-- **Manage:** `≡` opens a pane with the actions in three sections: Commands, Prompts and Shell. Press an action's label to edit it, `↑` and `↓` to move it within its section, and `✕` twice to delete it.
+- **Manage:** `≡` opens a pane with the actions in three sections: Commands, Prompts and Shell. When the pane is open, `≡` closes it. Press an action's label to edit it, `↑` and `↓` to move it within its section, and `✕` twice to delete it.
 - **Esc** steps back: from an option list to the form, from the form to the list, then it closes the pane.
+- **Bands:** the Settings box at the bottom of the list sets the layout. `one band` puts all actions in one row. `one band per section` gives Commands, Prompts and Shell a row each, marked with the section's symbol in its color: blue `/`, magenta `>` and cyan `$`. The pane marks its sections the same way. A section without actions gets no row, and the git state and `+` `≡` stay on the first row.
 
-Actions are kept in the mod's store, so every project shows the same buttons.
+```
+/ [ /pr ]  [ /commit ]                        * ↑2 main↓5  [ + ] [ ≡ ]
+> [ ★ review ]
+$ [ $ fetch ]
+```
+
+Actions and settings are kept in the mod's store, so every project shows the same buttons.
 
 ## Git state
 
-The right side of the row shows `*` for uncommitted changes, `↑N ↓N` against the upstream branch, and `main↓N` for commits on the remote's default branch (`origin/HEAD`, else `origin/main` or `origin/master`) that HEAD does not have. The counts come from local refs, so they are as current as the last fetch. Git runs with `--no-optional-locks`, so a refresh never holds the index lock while Claude runs its own git commands.
+The right side of the row shows `*` for uncommitted changes, `↑N ↓N` against the upstream branch, and `main↓N` for commits on the remote's default branch (`origin/HEAD`, else `origin/main` or `origin/master`) that HEAD does not have. The counts come from local refs, so they are as current as the last fetch. Git runs with `--no-optional-locks`, so a refresh never holds the index lock while Claude runs its own git commands. Outside a git repository the counts are left out and the actions still show.
 
 ## Install
 
