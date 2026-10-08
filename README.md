@@ -74,15 +74,24 @@ Skills and prompts wait until Claude is idle. Shell commands run at once.
 
 ## What it can access
 
-`claude plugin validate` reports these calls on the engine; nothing else is read, written or sent:
+The mod does only what you set up in the pane. It builds no command, prompt or slash command of its own, and it adds nothing to the text you save.
 
-- **Store:** your actions and the band order, under the mod's own keys (`$.store`).
-- **Processes:** only the shell commands you save as Run Shell actions, when you press them (`$.process.run`).
-- **Prompt and commands:** filling or sending the prompt, and running slash commands, when you press an action (`$.prompt`, `$.command`).
-- **UI:** the band, the pane, toasts and transcript lines (`$.ui`).
-- **Session state and a timer:** what the pane shows (`$.state`), and a timer that reads the saved actions again every 15 seconds, so actions saved in another session show up (`$.clock`).
+**What it runs, and when.** An action runs only when you press its button or its hotkey (a digit, typed while the prompt box is empty), or press `▶` in the pane:
 
-It makes no network calls and reads no files.
+| Type | What the mod does | Engine call |
+| --- | --- | --- |
+| Call Skill | Runs the slash command you saved, for example `/commit`, with the arguments you saved | `$.command.run` |
+| Fill Prompt | Puts the text you saved in the prompt box; nothing is sent until you send it | `$.prompt.fill` |
+| Send Prompt | Sends the text you saved to Claude, unchanged, as your own prompt | `$.prompt.submit` |
+| Run Shell | Runs the command you saved as `sh -c "<your command>"` in the session's directory, with a 2 minute time limit. The output goes to the transcript and nowhere else | `$.process.run` |
+
+The mod runs no other program, no other slash command and no other prompt. The command text in the shell call comes from your saved action, which is why the directory cannot read it as fixed text.
+
+**What it reads.** Only its own saved data: your actions and the band order, kept with `$.store` under the mod's own keys. The text of an action is the only stored data that goes into a command or a prompt, and only into the one you pressed. It reads no files, no conversation, no environment variables and no credentials.
+
+**What it sends.** The mod itself makes no network calls. A Send Prompt action sends its text to Claude, as if you typed it. A Run Shell command can do anything the command you wrote does, so save only commands you trust.
+
+**Other calls.** It draws the band, the pane, toasts and transcript lines (`$.ui`), keeps what the pane shows in session state (`$.state`), adds the `/quick-actions` command (`$.command.register`), and reads the saved actions again every 15 seconds so that actions saved in another session show up (`$.clock`).
 
 ## Limits
 
