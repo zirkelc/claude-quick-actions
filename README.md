@@ -57,9 +57,9 @@ Type `/quick-actions` to open the pane, and again to close it. The pane has two 
 | `☆` / `★` | Pins the action to the band, or takes it off |
 | `▶` | Runs the action now |
 | `✕` | Deletes the action (press twice) |
-| `+ Add action` | Opens the form for a new action |
+| `+ Add action` | Opens the form for a new action. A new action is not on the band until you press its `☆` |
 
-**Band** lists what the band shows, in order. Each entry has `↑` `↓` to move it and `-` to take it off the band. `+ Add new line` adds a `↵ new line` entry: the entries after it go on the next row of the band.
+**Band** lists what the band shows, in order. Each entry has `↑` `↓` to move it and `-` to take it off the band. Once an action is on the band, `+ Add new line` adds a `↵ new line` entry: the entries after it go on the next row of the band.
 
 **The form** sets the action's type (Call Skill, Fill Prompt, Send Prompt or Run Shell), its color, its hotkey, its label and its text. The preview shows the button as the band draws it. `← Back` and Esc go back one step; `✕ Close` closes the pane.
 

@@ -3,3 +3,6 @@ export const SAVED = [
   { id: 'c1', label: 'commit', hotkey: '1', color: '', kind: 'command', text: 'commit --push' },
   { id: 'r1', label: 'review', hotkey: '', color: 'yellow', kind: 'submit', text: 'Review the diff' },
 ]
+
+/** Both saved actions on the band, in saved order. */
+export const BAND = ['c1', 'r1']

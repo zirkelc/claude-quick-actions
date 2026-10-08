@@ -81,7 +81,7 @@ describe('actions', () => {
     expect(colors).toEqual(['white', 'black', 'black', 'white', 'white', 'black', 'black', 'white', 'black', 'white'])
   })
 
-  test('should drop deleted ids and put every action on the band before an order is stored', () => {
+  test('should drop deleted ids and leave the band empty before an order is stored', () => {
     // Arrange
     const stored = ['a', 'gone', 'newline:x', 'b', 'a']
 
@@ -91,7 +91,7 @@ describe('actions', () => {
 
     // Assert
     expect(order).toEqual(['a', 'newline:x', 'b'])
-    expect(first).toEqual(['a', 'b'])
+    expect(first).toEqual([])
   })
 
   test('should move an entry one place and stop at the ends', () => {

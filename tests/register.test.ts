@@ -1,6 +1,6 @@
 import { describe, expect, mock, test, tier } from 'claude-code/testing'
 
-import { memoryStore, mountBand, mountPane, SAVED, startsSession, toggleList } from './fixtures'
+import { BAND, memoryStore, mountBand, mountPane, SAVED, startsSession, toggleList } from './fixtures'
 
 tier('user')
 
@@ -8,7 +8,7 @@ describe('register', () => {
   test('should draw only the actions on the band', async ($, on) => {
     // Arrange
     const { runs } = startsSession(on)
-    mock.store(on, { actions: SAVED })
+    mock.store(on, { actions: [...SAVED, { id: 'f1', label: 'notes', hotkey: '', color: '', kind: 'fill', text: 'Draft notes' }], order: BAND })
 
     // Act
     const band = await mountBand($, on)
@@ -45,7 +45,7 @@ describe('register', () => {
   test('should run a saved command with its arguments on press', async ($, on) => {
     // Arrange
     startsSession(on)
-    mock.store(on, { actions: SAVED })
+    mock.store(on, { actions: SAVED, order: BAND })
     const commands: Array<[string, string]> = []
     on('command.run', ($, e) => {
       commands.push([e.command, e.args])
@@ -63,7 +63,7 @@ describe('register', () => {
   test('should show a saved shell action and run it with sh -c on press', async ($, on) => {
     // Arrange
     const { runs } = startsSession(on)
-    mock.store(on, { actions: [{ id: 'x1', label: 'test', hotkey: '2', color: '', kind: 'shell', text: 'pnpm test' }] })
+    mock.store(on, { actions: [{ id: 'x1', label: 'test', hotkey: '2', color: '', kind: 'shell', text: 'pnpm test' }], order: ['x1'] })
     const band = await mountBand($, on)
 
     // Act
@@ -75,7 +75,7 @@ describe('register', () => {
     expect(runs.map(run => [...run.argv]).filter(argv => argv[0] === 'sh')).toEqual([['sh', '-c', 'pnpm test']])
   })
 
-  test('should save a new action from the form and put it on the band', async ($, on) => {
+  test('should save a new action from the form and keep it off the band', async ($, on) => {
     // Arrange
     startsSession(on)
     const store = memoryStore(on)
@@ -100,9 +100,9 @@ describe('register', () => {
 
     // Assert
     expect(saved).toEqual([{ id: expect.any(String), label: 'release', hotkey: '1', color: '', kind: 'command', text: 'release-pr record' }])
-    expect(store.get('order')).toEqual([saved[0]?.id])
+    expect(store.get('order')).toEqual([])
     expect(toasts).toEqual(['Saved "release"'])
-    expect((await band.find({ key: `custom-${saved[0]?.id}` }))?.text).toBe('release')
+    expect(await band.find({ key: `custom-${saved[0]?.id}` })).toBe(undefined)
     expect((await pane.find({ key: 'new' }))?.text).toBe('Add action')
   })
 
@@ -148,7 +148,7 @@ describe('register', () => {
   test('should draw an action with a color as a block in that color, and one without as its plain label', async ($, on) => {
     // Arrange
     startsSession(on)
-    mock.store(on, { actions: SAVED })
+    mock.store(on, { actions: SAVED, order: BAND })
 
     // Act
     const band = await mountBand($, on)
@@ -168,7 +168,7 @@ describe('register', () => {
   test('should draw the band of a plugin beneath under its own', async ($, on) => {
     // Arrange
     startsSession(on)
-    mock.store(on, { actions: SAVED })
+    mock.store(on, { actions: SAVED, order: BAND })
 
     // Act
     const band = await mountBand($, on, {
@@ -203,7 +203,7 @@ describe('register', () => {
   test('should add a new line from the list and move it to start a second band row', async ($, on) => {
     // Arrange
     startsSession(on)
-    const store = memoryStore(on, { actions: SAVED })
+    const store = memoryStore(on, { actions: SAVED, order: BAND })
     on('ui.open', () => ({ value: { isPlaced: true as const } }))
     const band = await mountBand($, on)
     await toggleList($)
@@ -226,7 +226,7 @@ describe('register', () => {
   test('should show the list in the band when the pane has no room to draw', async ($, on) => {
     // Arrange
     startsSession(on)
-    memoryStore(on, { actions: SAVED })
+    memoryStore(on, { actions: SAVED, order: BAND })
     on('ui.open', () => ({ value: { isPlaced: false as const, reason: 'no room' } }))
     const closed: Array<string> = []
     on('ui.close', ($, e) => {
@@ -276,6 +276,7 @@ describe('register', () => {
     startsSession(on)
     mock.store(on, {
       actions: [{ id: 'l1', label: 'review the whole diff for bugs and style', hotkey: '', color: '', kind: 'submit', text: 'Review' }],
+      order: ['l1'],
     })
 
     // Act
@@ -306,6 +307,28 @@ describe('register', () => {
     expect(listed).toEqual(['edit-c1', 'edit-r1'])
     expect(store.get('order')).toEqual(['c1', 'r1'])
     expect(after).toEqual(['custom-c1', 'custom-r1'])
+  })
+
+  test('should offer a new line only once an action is on the band, and list a prompt without its type', async ($, on) => {
+    // Arrange
+    startsSession(on)
+    const store = memoryStore(on, { actions: [{ id: 'f1', label: 'notes', hotkey: '', color: '', kind: 'fill', text: 'Draft notes' }], order: ['newline:x'] })
+    on('ui.open', () => ({ value: { isPlaced: true as const } }))
+    await mountBand($, on)
+    await toggleList($)
+    const pane = await mountPane($)
+    const before = await pane.find({ key: 'newline' })
+
+    // Act
+    await pane.press({ key: 'pin-f1' })
+    const after = await pane.find({ key: 'newline' })
+    const texts = (await pane.findAll({ type: 'Text' })).map(found => found.text)
+
+    // Assert
+    expect(before).toBe(undefined)
+    expect(after?.text).toBe('Add new line')
+    expect(store.get('order')).toEqual(['newline:x', 'f1'])
+    expect(texts.includes('Draft notes')).toBe(true)
   })
 
   test('should run an action from the list', async ($, on) => {

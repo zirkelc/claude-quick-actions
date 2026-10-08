@@ -48,9 +48,11 @@ export function listView(ui: Ui, model: ListModel, handlers: PaneHandlers): Rend
   const labelOf = (action: CustomAction, button: RenderElement) => {
     const mark = SECTION_MARKS[sectionOf(action.kind)]
     return [
-      <Text key={`mark-${action.id}`} bold color={mark.color}>
-        {mark.symbol}
-      </Text>,
+      <Box key={`mark-${action.id}`} flexShrink={0}>
+        <Text bold color={mark.color}>
+          {mark.symbol}
+        </Text>
+      </Box>,
       <Box
         key={`block-${action.id}`}
         flexDirection="row"
@@ -65,6 +67,14 @@ export function listView(ui: Ui, model: ListModel, handlers: PaneHandlers): Rend
 
   const columnLabel = (action: CustomAction) => shownLabel(action.label, width).padEnd(width)
 
+  /**
+   * A control at the end of a row. The spaces are part of the label, so the
+   * hover and the click cover them too and the target is three cells wide.
+   */
+  const control = (key: string, label: string, isDim: boolean, onPress: () => void) => (
+    <Button key={key} label={` ${label} `} plain dimColor={isDim} onPress={onPress} />
+  )
+
   /** One action: its label opens the form, then its hotkey and what it does, dim and cut at the pane's edge. */
   const actionRow = (action: CustomAction) => {
     const isOnBand = onBand.has(action.id)
@@ -72,28 +82,24 @@ export function listView(ui: Ui, model: ListModel, handlers: PaneHandlers): Rend
     return (
       <Box key={`row-${action.id}`} flexDirection="row" columnGap={1}>
         {labelOf(action, edit)}
-        <Text dimColor>{action.hotkey !== '' ? `[${action.hotkey}]` : '   '}</Text>
-        <Box flexGrow={1} flexShrink={1} overflow="hidden">
+        <Box width={3} flexShrink={0}>
+          <Text dimColor>{action.hotkey !== '' ? `[${action.hotkey}]` : ''}</Text>
+        </Box>
+        {/** Width 0 and grow: only this cell takes the room left, so a long text cannot squeeze the cells beside it. */}
+        <Box width={0} flexGrow={1} overflow="hidden">
           <Text dimColor wrap="truncate-end">
-            {`${action.kind === 'fill' ? 'fill: ' : ''}${whatOf(action)}`}
+            {whatOf(action)}
           </Text>
         </Box>
-        <Box flexDirection="row" columnGap={1} flexShrink={0}>
-          <Button
-            key={`pin-${action.id}`}
-            label={isOnBand ? '★' : '☆'}
-            plain
-            dimColor={!isOnBand}
-            onPress={() => handlers.togglePin(action.id)}
-          />
-          <Button key={`run-${action.id}`} label="▶" plain dimColor onPress={() => handlers.run(action)} />
-          <Button
-            key={`delete-${action.id}`}
-            label={pendingDelete === action.id ? 'delete? ✕' : '✕'}
-            plain
-            dimColor={pendingDelete !== action.id}
-            onPress={() => handlers.pressDelete(action)}
-          />
+        <Box flexDirection="row" flexShrink={0}>
+          {control(`pin-${action.id}`, isOnBand ? '★' : '☆', !isOnBand, () => handlers.togglePin(action.id))}
+          {control(`run-${action.id}`, '▶', true, () => handlers.run(action))}
+          {control(
+            `delete-${action.id}`,
+            pendingDelete === action.id ? 'delete? ✕' : '✕',
+            pendingDelete !== action.id,
+            () => handlers.pressDelete(action),
+          )}
         </Box>
       </Box>
     )
@@ -101,10 +107,10 @@ export function listView(ui: Ui, model: ListModel, handlers: PaneHandlers): Rend
 
   /** Moves an entry of the band one place; across a new line it moves to the next or previous row. */
   const bandControls = (entry: string, index: number) => (
-    <Box flexDirection="row" columnGap={1} flexShrink={0}>
-      <Button key={`up-${entry}`} label="↑" plain dimColor={index > 0} onPress={() => handlers.moveEntry(entry, -1)} />
-      <Button key={`down-${entry}`} label="↓" plain dimColor={index < order.length - 1} onPress={() => handlers.moveEntry(entry, 1)} />
-      <Button key={`remove-${entry}`} label="-" plain dimColor onPress={() => handlers.removeFromBand(entry)} />
+    <Box flexDirection="row" flexShrink={0}>
+      {control(`up-${entry}`, '↑', index > 0, () => handlers.moveEntry(entry, -1))}
+      {control(`down-${entry}`, '↓', index < order.length - 1, () => handlers.moveEntry(entry, 1))}
+      {control(`remove-${entry}`, '-', true, () => handlers.removeFromBand(entry))}
     </Box>
   )
 
@@ -119,6 +125,8 @@ export function listView(ui: Ui, model: ListModel, handlers: PaneHandlers): Rend
   )
 
   const byId = new Map(model.custom.map(action => [action.id, action]))
+  /** A new line splits rows of actions, so it is offered only once an action is on the band. */
+  const hasActionOnBand = order.some(entry => byId.has(entry))
   const bandRows = order.flatMap((entry, index) => {
     if (isNewline(entry)) {
       return [
@@ -159,8 +167,8 @@ export function listView(ui: Ui, model: ListModel, handlers: PaneHandlers): Rend
       <Box marginY={1}>{ruleView(ui, 'rule-band', model.columns - 2)}</Box>
       <Text bold>Band</Text>
       {bandRows}
-      {bandRows.length === 0 && <Text dimColor>Nothing on the band yet: press ☆ on an action.</Text>}
-      {addRow('newline', '+', 'Add new line', handlers.addNewline)}
+      {!hasActionOnBand && <Text dimColor>Nothing on the band yet: press ☆ on an action.</Text>}
+      {hasActionOnBand && addRow('newline', '+', 'Add new line', handlers.addNewline)}
     </Box>
   )
 }

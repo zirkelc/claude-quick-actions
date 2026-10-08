@@ -142,10 +142,6 @@ async function saveDraft($: EngineInterface) {
     text: normalizeText(draft.kind, draft.text),
   }
   await writeCustom($, draft.id === null ? [...custom, saved] : custom.map(action => (action.id === draft.id ? saved : action)))
-  /** A new action goes on the band at once; its star in the list takes it off. */
-  if (draft.id === null) {
-    await writeOrder($, togglePin(await read($, orderState), saved.id))
-  }
   await leaveForm($)
   $.ui.toast(`Saved "${saved.label}"`)
 }

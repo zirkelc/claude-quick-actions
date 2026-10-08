@@ -105,12 +105,11 @@ export function newlineEntry(): string {
 /**
  * Makes the stored band order fit the saved actions: ids of deleted actions
  * go, and an entry that shows twice keeps its first place. Actions in no
- * place are not on the band. With no order stored yet (before the band could
- * hide actions), every action is on the band, in saved order.
+ * place are not on the band, so with no order stored yet the band is empty.
  */
 export function arrangeOrder(stored: unknown, ids: Array<string>): Array<string> {
   if (!Array.isArray(stored)) {
-    return [...ids]
+    return []
   }
   const known = new Set(ids)
   const seen = new Set<string>()
