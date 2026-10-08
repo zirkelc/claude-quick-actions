@@ -4,7 +4,7 @@
   <img src="assets/quick-actions.png" alt="A Claude Code session with the quick actions band above the prompt: git pull, review diff, /commit and /release as colored buttons" width="800" />
 </picture>
 
-<h1 align="center">quick-actions</h1>
+<h1 align="center">Quick Actions </h1>
 
 <p align="center">One-click buttons above the Claude Code prompt for the skills, prompts and shell commands you run all the time</p>
 <p align="center">
