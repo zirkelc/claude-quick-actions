@@ -13,9 +13,9 @@
 
 </div>
 
-`git pull`, "review the diff", `/commit`, `/release`: things you type ten times a day become one click. Save an action once, pin it to the band, and press it. Actions you use less often stay in a list, one click away from the band.
+`git pull`, "review the diff", `/commit`: things you type ten times a day become one click. Save an action once, pin it to the band, and press it. Actions you use less often stay in a list, one click away from the band.
 
-quick-actions is a [Claude Code mod](https://code.claude.com/docs/en/plugins): a plugin of function hooks that draws its own UI inside Claude Code.
+`quick-actions` is a [Claude Code mod](https://code.claude.com/docs/en/plugins): a plugin of function hooks that draws its own UI inside Claude Code.
 
 ## Features
 
@@ -114,8 +114,6 @@ To load your checkout in every session, add it to the `env` block of `~/.claude/
 Claude Code writes the API types to `.claude-plugin/types/` when it loads the mod, and `tsconfig.json` extends them, so `tsc -p .` type-checks the mod after the first load.
 
 `hooks/register.tsx` holds the hooks, the state and every call on the engine, because the mod API follows the engine interface only into functions of the same file. The rest is pure: `hooks/actions.ts` (the action model and the band order) and `hooks/views/` (the band, the list and the form). Each file under `tests/` covers the file of the same name under `hooks/`.
-
-The image at the top is `assets/screenshot.html`, rendered in a browser at 2x.
 
 ## License
 
