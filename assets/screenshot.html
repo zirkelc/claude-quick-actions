@@ -1,0 +1,127 @@
+<title>Quick Actions Screenshot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  /* One terminal window on a quiet backdrop: the Claude Code session drawn cell by cell in one monospace grid. */
+  :root {
+    color-scheme: dark;
+    --backdrop: #17151a;
+    --backdrop-glow: #2a2129;
+    --window: #1e1d1f;
+    --chrome: #2a282b;
+    --fg: #e8e6e3;
+    --dim: #8f8b88;
+    --faint: #4a4648;
+    --claude: #d97757;
+    --green: #4eba65;
+    --cyan: #5fb3d9;
+    --user-bg: #373437;
+    --blue: #2f64c8;
+    --magenta: #9b46b5;
+    --forest: #2a8a4a;
+    --red: #c23b3b;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  html, body { margin: 0; background: var(--backdrop); }
+  body {
+    min-height: 100%;
+    display: grid;
+    place-items: center;
+    padding-block: 48px;
+    padding-inline: 16px;
+    background: radial-gradient(ellipse at 30% 0%, var(--backdrop-glow), var(--backdrop) 70%);
+    font-family: var(--mono);
+  }
+  .window {
+    width: min(100%, 860px);
+    border-radius: 12px;
+    background: var(--window);
+    box-shadow: 0 0 0 1px #ffffff14, 0 24px 60px #00000080;
+    overflow: hidden;
+  }
+  .chrome {
+    position: relative;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--chrome);
+  }
+  .chrome i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .chrome i:nth-child(1) { background: #ff5f57; }
+  .chrome i:nth-child(2) { background: #febc2e; }
+  .chrome i:nth-child(3) { background: #28c840; }
+  .chrome span {
+    position: absolute;
+    inset-inline: 0;
+    text-align: center;
+    font-size: 12px;
+    color: var(--dim);
+    pointer-events: none;
+  }
+  .scroll { overflow-x: auto; }
+  .welcome {
+    display: grid;
+    gap: 2px;
+    width: max-content;
+    margin: 20px 24px 0;
+    padding: 10px 16px;
+    border: 1px solid var(--claude);
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--fg);
+  }
+  .welcome div + div { padding-inline-start: 2ch; }
+  .welcome div:nth-child(2) { margin-top: 10px; }
+  pre {
+    margin: 0;
+    padding: 20px 24px 22px;
+    font: 14px/1.55 var(--mono);
+    color: var(--fg);
+    width: max-content;
+  }
+  .claude { color: var(--claude); }
+  .dim { color: var(--dim); }
+  .faint { color: var(--faint); }
+  .green { color: var(--green); }
+  .cyan { color: var(--cyan); }
+  .bold { font-weight: 700; }
+  .user { background: var(--user-bg); color: var(--fg); }
+  .cursor { background: var(--fg); color: var(--window); }
+  /* The band: a colored action is a block with the terminal's own text color; a plain one is its label. */
+  .act { color: var(--fg); }
+  .blue { background: var(--blue); }
+  .magenta { background: var(--magenta); }
+  .forest { background: var(--forest); }
+  .red { background: var(--red); }
+  /* For the README image: no backdrop, so the window sits on GitHub's own background in either theme. */
+  .transparent, .transparent body { background: transparent; }
+</style>
+<script>
+  if (location.hash === "#transparent") document.documentElement.classList.add("transparent");
+</script>
+
+<div class="window" role="img" aria-label="A Claude Code session with the quick actions band above the prompt">
+  <div class="chrome"><i></i><i></i><i></i><span>claude — ~/Developer/acme-app</span></div>
+  <div class="scroll">
+<div class="welcome">
+      <div><span class="claude">✻</span> Welcome to <span class="bold">Claude Code</span>!</div>
+      <div class="dim">/help for help, /status for your setup</div>
+      <div class="dim">cwd: ~/Developer/acme-app</div>
+    </div>
+<pre><span class="user">&gt; review the session changes before I push </span>
+
+<span class="green">⏺</span> <span class="bold">Bash</span>(git diff --stat)
+  <span class="dim">⎿  4 files changed, 61 insertions(+), 12 deletions(-)</span>
+
+⏺ Two things to fix before you push: a missing <span class="bold">await</span> in
+  <span class="cyan">src/session.ts:88</span> and an unused import in <span class="cyan">src/band.ts</span>.
+
+  <span class="act forest"> git pull </span>  <span class="act magenta"> review diff </span>  <span class="act blue"> /commit </span>  <span class="act red"> /release </span>
+<span class="faint">────────────────────────────────────────────────────────────────────────────────────────</span>
+<span class="dim">&gt;</span> <span class="cursor"> </span>
+<span class="faint">────────────────────────────────────────────────────────────────────────────────────────</span>
+  <span class="dim">⏵⏵ accept edits on (shift+tab to cycle)</span></pre>
+  </div>
+</div>

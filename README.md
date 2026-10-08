@@ -1,48 +1,107 @@
-# claude-quick-actions
+<div align='center'>
 
-A Claude Code mod that adds a row of buttons above the prompt. Each button runs a skill or slash command, sends or fills a prompt, or runs a shell command. The row also shows the git state of the working directory.
+<picture>
+  <img src="assets/quick-actions.png" alt="A Claude Code session with the quick actions band above the prompt: git pull, review diff, /commit and /release as colored buttons" width="800" />
+</picture>
 
-```
-[ /pr ]  [ $ fetch ]  [ ★ review ]            * ↑2 main↓5  [ + ] [ ≡ ]
-```
+<h1 align="center">quick-actions</h1>
 
-## Actions
+<p align="center">One-click buttons above the Claude Code prompt for the skills, prompts and shell commands you run all the time</p>
+<p align="center">
+  <a href="LICENSE" alt="License"><img src="https://img.shields.io/github/license/zirkelc/claude-quick-actions"></a>
+</p>
 
-Each action has one of four types:
+</div>
 
-| Type | What a press does |
-| --- | --- |
-| skill / command | Runs `/name args` at once, as if typed |
-| send prompt | Sends the text to Claude at once |
-| fill prompt box | Puts the text in the prompt box, to edit before sending |
-| shell command | Runs the command with `sh -c` in the session's directory, without Claude; the output goes to the transcript |
+`git pull`, "review the diff", `/commit`, `/release`: things you type ten times a day become one click. Save an action once, pin it to the band, and press it. Actions you use less often stay in a list, one click away from the band.
 
-Commands and prompts wait until the session is idle. Shell commands run at once.
+quick-actions is a [Claude Code mod](https://code.claude.com/docs/en/plugins): a plugin of function hooks that draws its own UI inside Claude Code.
 
-An action can also have an icon, a color for that icon, and a digit hotkey. A digit presses the button from an empty prompt box.
+## Features
 
-## Usage
+- **Four types of action:** call a skill or slash command, send a prompt, fill the prompt box to edit before sending, or run a shell command.
+- **A band you arrange:** pin the actions you want, set their order, and split them over several rows.
+- **Colors and hotkeys:** give an action a color, and a digit that presses it from an empty prompt box.
+- **More actions than the band shows:** unpinned actions stay in the list, where `▶` runs them.
+- **Plays well with other mods:** the band draws above the bands of other mods, and draws nothing when no action is pinned.
+- **Same actions everywhere:** actions are kept in the mod's store, so every project and session shows them.
 
-- **Add:** type the action in the prompt box (`/commit`, `! pnpm test` or a prompt), then press `+`. The form opens prefilled, with the type taken from the prefix.
-- **Manage:** `≡` opens a pane with the actions in three sections: Commands, Prompts and Shell. When the pane is open, `≡` closes it. Press an action's label to edit it, `↑` and `↓` to move it within its section, and `✕` twice to delete it.
-- **Esc** steps back: from an option list to the form, from the form to the list, then it closes the pane.
-- **Bands:** the Settings box at the bottom of the list sets the layout. `one band` puts all actions in one row. `one band per section` gives Commands, Prompts and Shell a row each, marked with the section's symbol in its color: blue `/`, magenta `>` and cyan `$`. The pane marks its sections the same way. A section without actions gets no row, and the git state and `+` `≡` stay on the first row.
+## Requirements
 
-```
-/ [ /pr ]  [ /commit ]                        * ↑2 main↓5  [ + ] [ ≡ ]
-> [ ★ review ]
-$ [ $ fetch ]
-```
-
-Actions and settings are kept in the mod's store, so every project shows the same buttons.
-
-## Git state
-
-The right side of the row shows `*` for uncommitted changes, `↑N ↓N` against the upstream branch, and `main↓N` for commits on the remote's default branch (`origin/HEAD`, else `origin/main` or `origin/master`) that HEAD does not have. The counts come from local refs, so they are as current as the last fetch. Git runs with `--no-optional-locks`, so a refresh never holds the index lock while Claude runs its own git commands. Outside a git repository the counts are left out and the actions still show.
+Claude Code 2.1.287 or later, where mods load by default.
 
 ## Install
 
-Clone the repo and load it in every session through the `env` block of `~/.claude/settings.json`:
+```sh
+claude plugin marketplace add zirkelc/claude-quick-actions
+claude plugin install quick-actions@claude-quick-actions --scope user
+```
+
+To try it for one session without installing:
+
+```sh
+git clone https://github.com/zirkelc/claude-quick-actions.git
+claude --plugin-dir ./claude-quick-actions
+```
+
+To uninstall: `claude plugin uninstall quick-actions@claude-quick-actions`.
+
+## Usage
+
+Type `/quick-actions` to open the pane, and again to close it. The pane has two lists.
+
+**Actions** lists every saved action:
+
+| Control | What it does |
+| --- | --- |
+| label | Opens the action's form |
+| `☆` / `★` | Pins the action to the band, or takes it off |
+| `▶` | Runs the action now |
+| `✕` | Deletes the action (press twice) |
+| `+ Add action` | Opens the form for a new action |
+
+**Band** lists what the band shows, in order. Each entry has `↑` `↓` to move it and `-` to take it off the band. `+ Add new line` adds a `↵ new line` entry: the entries after it go on the next row of the band.
+
+**The form** sets the action's type (Call Skill, Fill Prompt, Send Prompt or Run Shell), its color, its hotkey, its label and its text. The preview shows the button as the band draws it. `← Back` and Esc go back one step; `✕ Close` closes the pane.
+
+| Type | What a press does |
+| --- | --- |
+| Call Skill | Runs `/name args` at once, as if typed |
+| Fill Prompt | Puts the text in the prompt box, to edit before sending |
+| Send Prompt | Sends the text to Claude at once |
+| Run Shell | Runs the command with `sh -c` in the session's directory, without Claude; the output goes to the transcript |
+
+Skills and prompts wait until Claude is idle. Shell commands run at once.
+
+## What it can access
+
+`claude plugin validate` reports these calls on the engine; nothing else is read, written or sent:
+
+- **Store:** your actions and the band order, under the mod's own keys (`$.store`).
+- **Processes:** only the shell commands you save as Run Shell actions, when you press them (`$.process.run`).
+- **Prompt and commands:** filling or sending the prompt, and running slash commands, when you press an action (`$.prompt`, `$.command`).
+- **UI:** the band, the pane, toasts and transcript lines (`$.ui`).
+- **Session state and a timer:** what the pane shows (`$.state`), and a timer that reads the saved actions again every 15 seconds, so actions saved in another session show up (`$.clock`).
+
+It makes no network calls and reads no files.
+
+## Limits
+
+These come from the mod API:
+
+- A button label is one plain string, so a colored button keeps the terminal's text color. Light colors (yellow, white) read best with a light terminal theme.
+- A digit hotkey only works for an action on the band, and the band shows it before the label (`1: commit`).
+- Text inputs are single-line. In the text field, Enter adds a line break, and Save saves.
+- A filled `!` text stays a normal prompt; the prompt box cannot be put into shell mode. Use Run Shell instead.
+
+## Development
+
+```sh
+claude plugin validate .
+claude plugin test .
+```
+
+To load your checkout in every session, add it to the `env` block of `~/.claude/settings.json`:
 
 ```json
 {
@@ -52,24 +111,12 @@ Clone the repo and load it in every session through the `env` block of `~/.claud
 }
 ```
 
-For one session only: `claude --plugin-dir ~/Developer/claude-quick-actions`.
+Claude Code writes the API types to `.claude-plugin/types/` when it loads the mod, and `tsconfig.json` extends them, so `tsc -p .` type-checks the mod after the first load.
 
-Mods (plugins of function hooks) are an early-access feature of Claude Code. While it is turned off for an account, the mod does not load.
+`hooks/register.tsx` holds the hooks, the state and every call on the engine, because the mod API follows the engine interface only into functions of the same file. The rest is pure: `hooks/actions.ts` (the action model and the band order) and `hooks/views/` (the band, the list and the form). Each file under `tests/` covers the file of the same name under `hooks/`.
 
-## Development
+The image at the top is `assets/screenshot.html`, rendered in a browser at 2x.
 
-```sh
-claude plugin validate .
-claude plugin test .
-```
+## License
 
-Claude Code writes the API types to `.claude-plugin/types/` when it loads the mod; `tsconfig.json` extends them, so `tsc -p .` type-checks the mod after the first load.
-
-## Limits
-
-These come from the mod API:
-
-- A button label is one plain string: no color and no styled parts. Colors show on the text beside a button.
-- The terminal's dropdown takes no mouse clicks, so the form uses its own option lists.
-- Text inputs are single-line. In the prompt field, Enter adds a line break, and Save saves.
-- A filled `!` text stays a normal prompt; the prompt box cannot be put into shell mode. Use the shell type instead.
+[MIT](LICENSE)

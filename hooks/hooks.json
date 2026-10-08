@@ -1,1 +1,4 @@
-{ "modules": ["./register.tsx"] }
+{
+  "description": "Draws the quick actions band above the prompt and the pane that manages its actions",
+  "modules": ["./register.tsx"]
+}

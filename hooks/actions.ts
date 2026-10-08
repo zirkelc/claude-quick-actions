@@ -5,9 +5,7 @@ type BaseAction = {
   label: string
   /** One digit that presses the button from an empty prompt box, or while the band has the focus. */
   hotkey?: string
-  /** Optional symbol drawn before the label. */
-  icon?: string
-  /** Color name of the icon. */
+  /** Color name of the button. */
   color?: string
 }
 
@@ -35,8 +33,7 @@ export function toAction(custom: CustomAction): Action {
     label: custom.label,
     /** Only digits work from the prompt box; a letter saved by an older version is dropped. */
     hotkey: /^[0-9]$/.test(custom.hotkey) ? custom.hotkey : undefined,
-    /** Actions saved before icons and colors existed have neither field. */
-    icon: custom.icon || undefined,
+    /** Actions saved before colors existed have no color. */
     color: custom.color || undefined,
   }
   if (custom.kind === 'command') {
@@ -49,23 +46,9 @@ export function toAction(custom: CustomAction): Action {
   return { ...base, kind: custom.kind, text: custom.text }
 }
 
-/**
- * Makes a new draft from what the prompt box holds: `/name args` is a command,
- * `! cmd` a shell command, anything else a prompt to submit.
- */
-export function draftFromPrompt(input: string, returnTo: Draft['returnTo']): Draft {
-  const typed = input.trim()
-  let kind: CustomKind = 'submit'
-  let text = typed
-  /** A command keeps its slash in the form, as typed; saving removes it. */
-  if (typed.startsWith('/')) {
-    kind = 'command'
-  } else if (typed.startsWith('!')) {
-    kind = 'shell'
-    text = typed.slice(1).trim()
-  }
-  const label = text.length > 20 ? `${text.slice(0, 19)}…` : text
-  return { id: null, source: typed === '' ? null : typed, returnTo, error: null, picking: null, label, hotkey: '', icon: '', color: '', kind, text }
+/** An empty form for a new action: a prompt that is sent at once. */
+export function newDraft(): Draft {
+  return { id: null, error: null, picking: null, label: '', hotkey: '', color: '', kind: 'submit', text: '' }
 }
 
 /**
@@ -107,32 +90,68 @@ export function checkDraft(draft: Draft, usedHotkeys: Array<string>): string | n
   return null
 }
 
+/** Entries of the list that start a new row on the band carry this prefix before their own id. */
+export const NEWLINE_PREFIX = 'newline:'
+
+export function isNewline(entry: string): boolean {
+  return entry.startsWith(NEWLINE_PREFIX)
+}
+
+/** A new entry that starts a new row on the band. */
+export function newlineEntry(): string {
+  return `${NEWLINE_PREFIX}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+}
+
 /**
- * Moves the action with `id` one place up (-1) or down (+1) among its peers,
- * swapping it with the nearest peer in that direction; unchanged at either end.
- * Without `isPeer` every action is a peer.
+ * Makes the stored band order fit the saved actions: ids of deleted actions
+ * go, and an entry that shows twice keeps its first place. Actions in no
+ * place are not on the band. With no order stored yet (before the band could
+ * hide actions), every action is on the band, in saved order.
  */
-export function move(
-  list: Array<CustomAction>,
-  id: string,
-  step: -1 | 1,
-  isPeer: (action: CustomAction) => boolean = () => true,
-): Array<CustomAction> {
-  const from = list.findIndex(action => action.id === id)
-  if (from === -1) {
-    return list
+export function arrangeOrder(stored: unknown, ids: Array<string>): Array<string> {
+  if (!Array.isArray(stored)) {
+    return [...ids]
   }
-  let to = from + step
-  while (to >= 0 && to < list.length && !isPeer(list[to] as CustomAction)) {
-    to += step
+  const known = new Set(ids)
+  const seen = new Set<string>()
+  return stored.filter((entry): entry is string => {
+    if (typeof entry !== 'string' || seen.has(entry) || (!known.has(entry) && !isNewline(entry))) {
+      return false
+    }
+    seen.add(entry)
+    return true
+  })
+}
+
+/** Puts an action on the band, at the end, or takes it off. */
+export function togglePin(order: Array<string>, id: string): Array<string> {
+  return order.includes(id) ? order.filter(entry => entry !== id) : [...order, id]
+}
+
+/** Moves an entry one place up (-1) or down (+1); unchanged at either end. */
+export function moveEntry(order: Array<string>, entry: string, step: -1 | 1): Array<string> {
+  const from = order.indexOf(entry)
+  const to = from + step
+  if (from === -1 || to < 0 || to >= order.length) {
+    return order
   }
-  if (to < 0 || to >= list.length) {
-    return list
-  }
-  const next = [...list]
-  next[from] = list[to] as CustomAction
-  next[to] = list[from] as CustomAction
+  const next = [...order]
+  next[from] = order[to] as string
+  next[to] = entry
   return next
+}
+
+/** The rows of the band: the order split at each new line entry, empty rows left out. */
+export function rowsOf(order: Array<string>): Array<Array<string>> {
+  const rows: Array<Array<string>> = [[]]
+  for (const entry of order) {
+    if (isNewline(entry)) {
+      rows.push([])
+    } else {
+      rows[rows.length - 1]?.push(entry)
+    }
+  }
+  return rows.filter(row => row.length > 0)
 }
 
 export type Section = 'commands' | 'prompts' | 'shell'
@@ -145,6 +164,60 @@ export function sectionOf(kind: CustomKind): Section {
   return kind === 'shell' ? 'shell' : 'prompts'
 }
 
-/** The icons and colors the form offers. */
-export const ICONS = ['$', '›', '/', '★', '⚡', '✓', '✎', '⟳', '↑', '↓', '⚑', '◆', '●', '♥', '⚙']
+/** The colors the form offers. */
 export const COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
+
+/** The RGB values of the named colors, as common terminal themes draw them. */
+const NAMED_RGB: Record<string, [number, number, number]> = {
+  black: [0, 0, 0],
+  red: [205, 49, 49],
+  green: [13, 188, 121],
+  yellow: [229, 229, 16],
+  blue: [36, 114, 200],
+  magenta: [188, 63, 188],
+  cyan: [17, 168, 205],
+  white: [229, 229, 229],
+  gray: [102, 102, 102],
+  grey: [102, 102, 102],
+}
+
+/** Reads a named color, `#rrggbb` or `rgb(r,g,b)`; null for anything else. */
+function rgbOf(color: string): [number, number, number] | null {
+  const name = color.toLowerCase().replace(/bright$/, '')
+  if (name in NAMED_RGB) {
+    return NAMED_RGB[name] ?? null
+  }
+  const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color)
+  if (hex !== null) {
+    return [parseInt(hex[1] ?? '', 16), parseInt(hex[2] ?? '', 16), parseInt(hex[3] ?? '', 16)]
+  }
+  const rgb = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i.exec(color)
+  if (rgb !== null) {
+    return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])]
+  }
+  return null
+}
+
+/** The relative luminance of WCAG 2: 0 for black, 1 for white. */
+function luminanceOf([red, green, blue]: [number, number, number]): number {
+  const linear = (channel: number) => {
+    const value = channel / 255
+    return value <= 0.039_28 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+}
+
+/**
+ * Black or white, whichever has the higher WCAG contrast ratio on the given
+ * background color; white for a color it cannot read.
+ */
+export function textColorOn(background: string): 'black' | 'white' {
+  const rgb = rgbOf(background)
+  if (rgb === null) {
+    return 'white'
+  }
+  const luminance = luminanceOf(rgb)
+  const onBlack = (luminance + 0.05) / 0.05
+  const onWhite = 1.05 / (luminance + 0.05)
+  return onBlack > onWhite ? 'black' : 'white'
+}

@@ -1,0 +1,12 @@
+{
+  "name": "claude-quick-actions",
+  "owner": { "name": "Chris Cook", "url": "https://github.com/zirkelc" },
+  "metadata": { "description": "The quick actions mod for Claude Code." },
+  "plugins": [
+    {
+      "name": "quick-actions",
+      "source": "./",
+      "description": "A band above the prompt with buttons that run saved prompts, skills and shell commands."
+    }
+  ]
+}
