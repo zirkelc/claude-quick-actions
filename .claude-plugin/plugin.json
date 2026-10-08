@@ -1,6 +1,6 @@
 {
   "name": "quick-actions",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A band above the prompt with buttons that run saved prompts, skills and shell commands",
   "author": { "name": "Chris Cook", "url": "https://github.com/zirkelc" },
   "homepage": "https://github.com/zirkelc/claude-quick-actions",

@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # The manifest is only ever read by Claude Code, on someone else's machine, at
+  # install time. This is the one place it meets the program that reads it, which
+  # is why the CLI is unpinned: the question is whether the plugin is still valid
+  # against the current one, not against the one this was written for.
+  plugin:
+    name: Plugin
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      # The native installer, not npm: it ships a binary that needs no Node at
+      # all, which is why this job has no toolchain step.
+      - name: Install Claude Code
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Validate the plugin
+        run: claude plugin validate .
+
+  # Claude Code takes an update only when the version in the manifest changes,
+  # however many commits are pushed after it, and the directory lists each version
+  # it scans. So a change to what the plugin ships, made after the last version
+  # change, reaches nobody who has it installed. This fails until the version is
+  # raised, so such changes cannot sit unreleased without anyone noticing.
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check that shipped changes have a new version
+        run: |
+          # What an installed copy runs. Tests, the README, assets and CI are not in it.
+          shipped='hooks types .claude-plugin'
+
+          since=$(git log -1 --format=%H -G'"version"' -- .claude-plugin/plugin.json)
+          [ -n "$since" ] || { echo 'found no version change in .claude-plugin/plugin.json'; exit 1; }
+
+          # shellcheck disable=SC2086
+          changed=$(git diff --name-only "$since" HEAD -- $shipped)
+          if [ -n "$changed" ]; then
+            echo "These shipped files changed after the version was last raised in $(git log -1 --format='%h (%s)' "$since"):"
+            echo "$changed"
+            echo 'Raise the version in .claude-plugin/plugin.json.'
+            exit 1
+          fi
