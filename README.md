@@ -1,14 +1,16 @@
 <div align='center'>
 
-<picture>
-  <img src="assets/quick-actions.png" alt="A Claude Code session with the quick actions band above the prompt: git pull, review diff, /commit and /release as colored buttons" width="800" />
-</picture>
-
 <h1 align="center">Quick Actions </h1>
 
 <p align="center">One-click buttons above the Claude Code prompt for the skills, prompts and shell commands you run all the time</p>
 
+<picture>
+  <img src="assets/quick-actions.png" alt="A Claude Code session with the quick actions band above the prompt: git pull, review diff, /commit and /release as colored buttons" width="800" />
+</picture>
+
 </div>
+
+## Why
 
 `git pull`, "review the diff", `/commit`: things you type ten times a day become one click. Save an action once, pin it to the band, and press it. Actions you use less often stay in a list, one click away from the band.
 
