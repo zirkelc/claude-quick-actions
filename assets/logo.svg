@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Quick Actions logo">
+  <title>Quick Actions</title>
+  <!-- A terminal tile: two rows of colored action buttons above the prompt line -->
+  <rect width="512" height="512" rx="112" fill="#1e1d1f"/>
+  <rect x="88" y="104" width="150" height="72" rx="16" fill="#2a8a4a"/>
+  <rect x="262" y="104" width="162" height="72" rx="16" fill="#9b46b5"/>
+  <rect x="88" y="200" width="196" height="72" rx="16" fill="#2f64c8"/>
+  <rect x="308" y="200" width="116" height="72" rx="16" fill="#c23b3b"/>
+  <rect x="88" y="318" width="336" height="6" rx="3" fill="#4a4648"/>
+  <path d="M96 360 L140 392 L96 424" fill="none" stroke="#d97757" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="172" y="364" width="30" height="56" rx="4" fill="#e8e6e3"/>
+</svg>

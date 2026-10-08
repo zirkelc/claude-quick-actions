@@ -7,5 +7,6 @@
   "repository": "https://github.com/zirkelc/claude-quick-actions",
   "license": "MIT",
   "keywords": ["mod", "band", "buttons", "productivity"],
+  "icon": "./assets/logo.png",
   "types": "./types/index.d.ts"
 }
