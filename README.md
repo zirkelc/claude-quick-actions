@@ -7,9 +7,6 @@
 <h1 align="center">Quick Actions </h1>
 
 <p align="center">One-click buttons above the Claude Code prompt for the skills, prompts and shell commands you run all the time</p>
-<p align="center">
-  <a href="LICENSE" alt="License"><img src="https://img.shields.io/github/license/zirkelc/claude-quick-actions"></a>
-</p>
 
 </div>
 
