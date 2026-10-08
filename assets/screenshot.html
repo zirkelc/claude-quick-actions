@@ -97,6 +97,8 @@
   .red { background: var(--red); }
   /* For the README image: no backdrop, so the window sits on GitHub's own background in either theme. */
   .transparent, .transparent body { background: transparent; }
+  /* A shadow would end in a hard edge where the image is cut, so the window carries only its outline. */
+  .transparent .window { box-shadow: 0 0 0 1px #ffffff14; }
 </style>
 <script>
   if (location.hash === "#transparent") document.documentElement.classList.add("transparent");
