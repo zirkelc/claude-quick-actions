@@ -151,7 +151,10 @@ export function formView(ui: Ui, model: FormModel, handlers: PaneHandlers): Rend
           <Text dimColor>Enter adds a line</Text>
         </Box>
         {ruleView(ui, 'rule-text-top', model.columns - 2)}
-        {/* The input is one line and Enter submits it, so Enter appends a line break and Save saves. */}
+        {/*
+          The input is one line and Enter submits it, so Enter appends a line break and Save saves.
+          Workaround for anthropics/claude-code#99616, tracked in zirkelc/issues#18. Remove both when the fix is adopted.
+        */}
         <Box flexDirection="row" minHeight={3}>
           <Text bold>❯ </Text>
           <Input
