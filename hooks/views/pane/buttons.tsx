@@ -1,9 +1,7 @@
 import type { RenderElement } from 'claude-code'
 
 import type { Ui } from '../kit'
-
-/** The background of an action button in the terminal: the blue of a VS Code button, readable in both themes. */
-export const BUTTON_COLOR = '#0e639c'
+import { ACCENT_GROUND } from '../theme'
 
 /**
  * A button as an action: in the terminal a label on a colored ground, or the
@@ -23,7 +21,7 @@ export function actionButton(
     return <Button key={id} label={label} variant={isChosen ? 'primary' : 'secondary'} onPress={onPress} />
   }
   return (
-    <Box key={`box-${id}`} flexDirection="row" flexShrink={0} paddingX={1} {...(isChosen ? { backgroundColor: BUTTON_COLOR } : {})}>
+    <Box key={`box-${id}`} flexDirection="row" flexShrink={0} paddingX={1} {...(isChosen ? { backgroundColor: ACCENT_GROUND } : {})}>
       <Button key={id} label={label} plain {...(isChosen ? {} : { dimColor: true })} onPress={onPress} />
     </Box>
   )

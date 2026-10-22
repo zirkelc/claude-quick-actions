@@ -430,5 +430,73 @@ describe('register', () => {
     expect(inList).toBe(undefined)
     expect(close?.text).toBe('✕ Close')
   })
-})
 
+  test('should keep the padding of the label column on the desktop', async ($, on) => {
+    // Arrange
+    startsSession(on)
+    mock.store(on, { actions: [...SAVED, { id: 'p1', label: 'pull', hotkey: '', color: '', kind: 'shell', text: 'git pull' }], order: BAND })
+    on('ui.open', () => ({ value: { isPlaced: true as const } }))
+    await mountBand($, on)
+    await toggleList($)
+
+    // Act
+    const pane = await mountPane($, 100, 'desktop')
+    const label = (await pane.find({ key: 'edit-p1' }))?.text
+
+    // Assert
+    expect(label).toBe('pull\u00a0\u00a0')
+  })
+
+  test('should ask for the pane width that the options set', { options: { columns: 110 } }, async ($, on) => {
+    // Arrange
+    startsSession(on)
+    mock.store(on)
+    const widths: Array<number | undefined> = []
+    on('ui.open', ($, e) => {
+      widths.push(e.columns)
+      return { value: { isPlaced: true as const } }
+    })
+    await mountBand($, on)
+
+    // Act
+    await toggleList($)
+
+    // Assert
+    expect(widths).toEqual([110])
+  })
+
+  test('should sum up the actions and the band in the head of the list', async ($, on) => {
+    // Arrange
+    startsSession(on)
+    mock.store(on, { actions: [...SAVED, { id: 'p1', label: 'pull', hotkey: '', color: '', kind: 'shell', text: 'git pull' }], order: ['c1', 'newline:x', 'r1'] })
+    on('ui.open', () => ({ value: { isPlaced: true as const } }))
+    await mountBand($, on)
+    await toggleList($)
+
+    // Act
+    const pane = await mountPane($)
+    const texts = (await pane.findAll({ type: 'Text' })).map(found => found.text)
+
+    // Assert
+    expect(texts.includes('3 actions · 2 on the band · 2 rows')).toBe(true)
+  })
+
+  test('should put the band beside the actions in a wide pane, and under them in a narrow one', async ($, on) => {
+    // Arrange
+    startsSession(on)
+    mock.store(on, { actions: SAVED, order: BAND })
+    on('ui.open', () => ({ value: { isPlaced: true as const } }))
+    await mountBand($, on)
+    await toggleList($)
+
+    // Act
+    const wide = await mountPane($, 100)
+    const wideDirection = (await wide.find({ key: 'columns' }))?.props.flexDirection
+    await wide.unmount()
+    const narrow = await mountPane($, 60)
+    const narrowDirection = (await narrow.find({ key: 'columns' }))?.props.flexDirection
+
+    // Assert
+    expect([wideDirection, narrowDirection]).toEqual(['row', 'column'])
+  })
+})

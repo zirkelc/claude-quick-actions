@@ -13,11 +13,11 @@ export const TYPES: Array<{ kind: CustomKind; label: string }> = [
 
 export const COLOR_OPTIONS: Array<Option> = [{ value: '', label: 'default' }, ...COLORS.map(color => ({ value: color, label: color }))]
 
-/** The symbol in its color that marks an action's section in the list. */
-export const SECTION_MARKS: Record<Section, { color: string; symbol: string }> = {
-  commands: { color: 'blue', symbol: '/' },
-  prompts: { color: 'magenta', symbol: '>' },
-  shell: { color: 'cyan', symbol: '$' },
+/** The symbol that marks an action's section in the list. It is dim, so the colors of the actions stand out. */
+export const SECTION_MARKS: Record<Section, string> = {
+  commands: '/',
+  prompts: '>',
+  shell: '$',
 }
 
 /** Digits in keyboard order; a digit hotkey works from an empty prompt box. */

@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, Timer } from 'claude-code'
+import type { EngineInterface, PluginOptions, Register, Timer } from 'claude-code'
 
 import type { CustomAction, Draft } from '../types'
 import {
@@ -49,13 +49,22 @@ async function writeOrder($: EngineInterface, order: Array<string>) {
   await update($, orderState, () => order)
 }
 
+/** The width to ask for when the pane docks, from the options; none leaves it to the engine. */
+let paneColumns: number | undefined
+
+/** The pane width from the options: a whole number of 24 or more, else none. */
+function paneColumnsOf(options: PluginOptions): number | undefined {
+  const columns = options.columns
+  return typeof columns === 'number' && Number.isFinite(columns) ? Math.max(24, Math.round(columns)) : undefined
+}
+
 /**
  * Opens the pane. Called before any other await of a press, so the engine
  * counts the open as the person's. A pane without room to draw would wait
  * undrawn, so it is closed again and the band shows its views instead.
  */
 async function openPane($: EngineInterface): Promise<boolean> {
-  const opened = await $.ui.open(PANE_OPTIONS)
+  const opened = await $.ui.open(paneColumns === undefined ? PANE_OPTIONS : { ...PANE_OPTIONS, columns: paneColumns })
   if (!opened.isPlaced) {
     await $.ui.close({ id: PANE }).catch(() => undefined)
   }
@@ -224,7 +233,9 @@ async function reload($: EngineInterface) {
   }
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  paneColumns = paneColumnsOf(options)
+
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     /**

@@ -21,14 +21,15 @@ export async function mountBand($: Engine, on: On, { below }: { below?: Below } 
 }
 
 /**
- * Draws the pane through the plugin on the terminal.
+ * Draws the pane through the plugin, on the terminal by default.
  *
  * @param columns the pane's width
+ * @param surface where the pane draws
  */
-export function mountPane($: Engine, columns = 100) {
+export function mountPane($: Engine, columns = 100, surface: 'terminal' | 'desktop' = 'terminal') {
   return $.ui.mount({
     plugin: 'quick-actions',
-    surface: 'terminal',
+    surface,
     component: 'Pane',
     requestId: 'quick-actions',
     props: { bodyColumns: columns } as never,

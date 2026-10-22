@@ -1,6 +1,6 @@
 {
   "name": "quick-actions",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A band above the prompt with buttons that run saved prompts, skills and shell commands",
   "author": { "name": "Chris Cook", "url": "https://github.com/zirkelc" },
   "homepage": "https://github.com/zirkelc/claude-quick-actions",
@@ -8,5 +8,12 @@
   "license": "MIT",
   "keywords": ["mod", "band", "buttons", "productivity"],
   "icon": "./assets/logo.png",
-  "types": "./types/index.d.ts"
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "columns": {
+      "type": "number",
+      "title": "Pane width",
+      "description": "Columns to ask for when the pane docks beside the transcript in the fullscreen layout (24 or more). A width you drag the pane to wins. Leave it empty for the default width."
+    }
+  }
 }

@@ -1,11 +1,11 @@
 import type { RenderElement } from 'claude-code'
 
 import type { CustomAction } from '../../../types'
-import { isNewline, sectionOf } from '../../actions'
+import { isNewline, rowsOf, sectionOf } from '../../actions'
 import type { PaneHandlers, Ui } from '../kit'
 import { shownLabel } from '../label'
-import { ruleView } from './buttons'
-import { headerView } from './header-view'
+import { keepSpaces } from '../theme'
+import { headerView, sectionBar } from './header-view'
 import { SECTION_MARKS } from './options'
 
 export type ListModel = {
@@ -23,6 +23,21 @@ export type ListModel = {
 /** The widest the label column gets; a longer label is cut. */
 const LABEL_WIDTH = 20
 
+/** From this width the band stands beside the list of actions; a narrower pane puts it under them. */
+const WIDE_COLUMNS = 90
+
+/** The band's column in a wide pane: a band row needs its symbol, the widest label and three controls. */
+const BAND_COLUMNS = 36
+
+/** The cells between the two columns. */
+const COLUMN_GAP = 2
+
+/** What the symbols of the list mean, under the lists. */
+const LEGEND = '/ skill · > prompt · $ shell · [1] hotkey · ★ on the band · ▶ run · ✕ delete'
+
+/** A count with its noun, in the plural unless it is one. */
+const counted = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
+
 /** What an action does, on one line: the command with its slash, the shell command, or the prompt. */
 function whatOf(action: CustomAction): string {
   const text = action.text.replace(/\s+/g, ' ').trim()
@@ -33,46 +48,48 @@ function whatOf(action: CustomAction): string {
  * Two lists, one action or new line per line: every action, each with a star
  * that puts it on the band or takes it off, a button that runs it and a delete
  * button; then the band in its order, with buttons that move an entry or take
- * it off the band.
+ * it off the band. A wide pane draws the two lists side by side.
  */
 export function listView(ui: Ui, model: ListModel, handlers: PaneHandlers): RenderElement {
   const { Box, Button, Text } = ui
-  const { order, pendingDelete } = model
+  const { order, pendingDelete, surface } = model
+  const keep = keepSpaces(surface)
   const onBand = new Set(order)
   const width = Math.min(Math.max(1, ...model.custom.map(action => [...shownLabel(action.label)].length)), LABEL_WIDTH)
 
-  /**
-   * The section's symbol in its color, then the label in a column of one
-   * width; in its color the label is a block, as on the band.
-   */
-  const labelOf = (action: CustomAction, button: RenderElement) => {
-    const mark = SECTION_MARKS[sectionOf(action.kind)]
-    return [
-      <Box key={`mark-${action.id}`} flexShrink={0}>
-        <Text bold color={mark.color}>
-          {mark.symbol}
-        </Text>
-      </Box>,
-      <Box
-        key={`block-${action.id}`}
-        flexDirection="row"
-        flexShrink={0}
-        paddingX={1}
-        {...(action.color ? { backgroundColor: action.color } : {})}
-      >
-        {button}
-      </Box>,
-    ]
-  }
+  /** The cells inside the pane's side padding, and the width of each list. */
+  const inner = Math.max(1, model.columns - 2)
+  const isWide = model.columns >= WIDE_COLUMNS
+  const bandWidth = isWide ? BAND_COLUMNS : inner
+  const actionsWidth = isWide ? inner - BAND_COLUMNS - COLUMN_GAP : inner
 
-  const columnLabel = (action: CustomAction) => shownLabel(action.label, width).padEnd(width)
+  /**
+   * The section's symbol, dim, then the label in a column of one width; in
+   * its color the label is a block, as on the band.
+   */
+  const labelOf = (action: CustomAction, button: RenderElement) => [
+    <Box key={`mark-${action.id}`} flexShrink={0}>
+      <Text dimColor>{SECTION_MARKS[sectionOf(action.kind)]}</Text>
+    </Box>,
+    <Box
+      key={`block-${action.id}`}
+      flexDirection="row"
+      flexShrink={0}
+      paddingX={1}
+      {...(action.color ? { backgroundColor: action.color } : {})}
+    >
+      {button}
+    </Box>,
+  ]
+
+  const columnLabel = (action: CustomAction) => keep(shownLabel(action.label, width).padEnd(width))
 
   /**
    * A control at the end of a row. The spaces are part of the label, so the
    * hover and the click cover them too and the target is three cells wide.
    */
   const control = (key: string, label: string, isDim: boolean, onPress: () => void) => (
-    <Button key={key} label={` ${label} `} plain dimColor={isDim} onPress={onPress} />
+    <Button key={key} label={keep(` ${label} `)} plain dimColor={isDim} onPress={onPress} />
   )
 
   /** One action: its label opens the form, then its hotkey and what it does, dim and cut at the pane's edge. */
@@ -115,9 +132,9 @@ export function listView(ui: Ui, model: ListModel, handlers: PaneHandlers): Rend
   )
 
   /** A dim line at the end of a list that adds to it: a sign in the symbol column, the text in the label column. */
-  const addRow = (key: string, sign: string, label: string, onPress: () => void) => (
+  const addRow = (key: string, label: string, onPress: () => void) => (
     <Box key={`row-${key}`} flexDirection="row" columnGap={1}>
-      <Text dimColor>{sign}</Text>
+      <Text dimColor>+</Text>
       <Box flexDirection="row" flexShrink={0} paddingX={1}>
         <Button key={key} label={label} plain dimColor onPress={onPress} />
       </Box>
@@ -125,8 +142,10 @@ export function listView(ui: Ui, model: ListModel, handlers: PaneHandlers): Rend
   )
 
   const byId = new Map(model.custom.map(action => [action.id, action]))
+  const bandActions = order.filter(entry => byId.has(entry)).length
+  const bandRowCount = rowsOf(order).filter(row => row.some(entry => byId.has(entry))).length
   /** A new line splits rows of actions, so it is offered only once an action is on the band. */
-  const hasActionOnBand = order.some(entry => byId.has(entry))
+  const hasActionOnBand = bandActions > 0
   const bandRows = order.flatMap((entry, index) => {
     if (isNewline(entry)) {
       return [
@@ -155,20 +174,41 @@ export function listView(ui: Ui, model: ListModel, handlers: PaneHandlers): Rend
     ]
   })
 
-  return (
-    <Box flexDirection="column" paddingX={1}>
-      {headerView(ui, model.surface, handlers, null)}
-      <Box flexDirection="row" justifyContent="space-between">
-        <Text bold>Actions</Text>
-        <Text dimColor>★ on the band · ▶ run now</Text>
-      </Box>
+  const summary = [
+    counted(model.custom.length, 'action'),
+    `${bandActions} on the band`,
+    ...(bandRowCount > 1 ? [`${bandRowCount} rows`] : []),
+  ].join(' · ')
+
+  const actionsColumn = (
+    <Box key="column-actions" flexDirection="column" width={actionsWidth} flexShrink={0}>
+      {sectionBar(ui, surface, 'bar-actions', 'Actions', `${model.custom.length}`, actionsWidth)}
       {model.custom.map(actionRow)}
-      {addRow('new', '+', 'Add action', handlers.startAdd)}
-      <Box marginY={1}>{ruleView(ui, 'rule-band', model.columns - 2)}</Box>
-      <Text bold>Band</Text>
+      {addRow('new', 'Add action', handlers.startAdd)}
+    </Box>
+  )
+
+  const bandColumn = (
+    <Box key="column-band" flexDirection="column" width={bandWidth} flexShrink={0}>
+      {sectionBar(ui, surface, 'bar-band', 'Band', `${bandActions}`, bandWidth)}
       {bandRows}
       {!hasActionOnBand && <Text dimColor>Nothing on the band yet: press ☆ on an action.</Text>}
-      {hasActionOnBand && addRow('newline', '+', 'Add new line', handlers.addNewline)}
+      {hasActionOnBand && addRow('newline', 'Add new line', handlers.addNewline)}
+    </Box>
+  )
+
+  return (
+    <Box flexDirection="column" paddingX={1}>
+      {headerView(ui, surface, handlers, null, summary)}
+      <Box key="columns" flexDirection={isWide ? 'row' : 'column'} {...(isWide ? { columnGap: COLUMN_GAP } : { rowGap: 1 })}>
+        {actionsColumn}
+        {bandColumn}
+      </Box>
+      <Box key="footer" marginTop={1}>
+        <Text dimColor wrap="wrap">
+          {LEGEND}
+        </Text>
+      </Box>
     </Box>
   )
 }

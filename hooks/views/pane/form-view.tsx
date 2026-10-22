@@ -4,6 +4,7 @@ import type { CustomAction, Draft } from '../../../types'
 import { textColorOn } from '../../actions'
 import type { PaneHandlers, Ui } from '../kit'
 import { shownLabel } from '../label'
+import { keepSpaces } from '../theme'
 import { actionButton, ruleView } from './buttons'
 import { headerView } from './header-view'
 import { COLOR_OPTIONS, HOTKEYS, type Option, TEXT_FIELDS, TYPES } from './options'
@@ -33,6 +34,7 @@ const optionCells = (setting: Setting, option: Option) => (setting.id === 'color
 export function formView(ui: Ui, model: FormModel, handlers: PaneHandlers): RenderElement {
   const { Box, Button, Input, Text } = ui
   const { draft, surface } = model
+  const keep = keepSpaces(surface)
   const field = TEXT_FIELDS[draft.kind]
 
   /** Digits another action already uses are left out, so a clash cannot be picked. */
@@ -74,13 +76,21 @@ export function formView(ui: Ui, model: FormModel, handlers: PaneHandlers): Rend
     return pickerView(ui, model, picking, handlers)
   }
 
-  /** The type as one button for each kind. */
+  /**
+   * The type as one button for each kind. In a narrow pane the buttons wrap
+   * to a second line; the title keeps its width, and each button keeps the
+   * height of one line.
+   */
   const typeRow = (
-    <Box key="setting-row-kind" flexDirection="row" columnGap={1}>
-      <Text>{'Type'.padEnd(TITLE_WIDTH)}</Text>
-      {TYPES.map(type =>
-        actionButton(ui, surface, `kind-${type.kind}`, type.label, () => void handlers.editDraft({ kind: type.kind }), draft.kind === type.kind),
-      )}
+    <Box key="setting-row-kind" flexDirection="row" columnGap={1} alignItems="flex-start">
+      <Box flexShrink={0}>
+        <Text>{keep('Type'.padEnd(TITLE_WIDTH))}</Text>
+      </Box>
+      <Box flexDirection="row" flexWrap="wrap" flexShrink={1} columnGap={1} rowGap={1} alignItems="flex-start">
+        {TYPES.map(type =>
+          actionButton(ui, surface, `kind-${type.kind}`, type.label, () => void handlers.editDraft({ kind: type.kind }), draft.kind === type.kind),
+        )}
+      </Box>
     </Box>
   )
 
@@ -90,7 +100,7 @@ export function formView(ui: Ui, model: FormModel, handlers: PaneHandlers): Rend
     if (cells <= model.columns - 2) {
       return (
         <Box key={`setting-row-${setting.id}`} flexDirection="row" columnGap={1}>
-          <Text>{setting.title.padEnd(TITLE_WIDTH)}</Text>
+          <Text>{keep(setting.title.padEnd(TITLE_WIDTH))}</Text>
           {setting.options.map(option => optionButton(setting, option))}
         </Box>
       )
@@ -100,7 +110,7 @@ export function formView(ui: Ui, model: FormModel, handlers: PaneHandlers): Rend
       <Box key={`setting-row-${setting.id}`} flexDirection="row" columnGap={1}>
         <Button
           key={`setting-${setting.id}`}
-          label={`${setting.title.padEnd(TITLE_WIDTH)}${option?.label ?? ''} ›`}
+          label={keep(`${setting.title.padEnd(TITLE_WIDTH)}${option?.label ?? ''} ›`)}
           plain
           onPress={() => void handlers.editDraft({ picking: setting.id })}
         />
@@ -123,9 +133,8 @@ export function formView(ui: Ui, model: FormModel, handlers: PaneHandlers): Rend
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      {headerView(ui, surface, handlers, handlers.leaveForm)}
-      <Text bold>{draft.id === null ? 'New action' : 'Edit action'}</Text>
-      <Box flexDirection="column" rowGap={1} marginTop={1}>
+      {headerView(ui, surface, handlers, handlers.leaveForm, draft.id === null ? 'New action' : 'Edit action')}
+      <Box flexDirection="column" rowGap={1}>
         {typeRow}
         {settings.map(settingRow)}
       </Box>
@@ -177,6 +186,9 @@ export function formView(ui: Ui, model: FormModel, handlers: PaneHandlers): Rend
           {preview}
         </Box>
       </Box>
+      <Text key="hint" dimColor>
+        Esc goes back one step
+      </Text>
     </Box>
   )
 }
@@ -188,19 +200,19 @@ export function formView(ui: Ui, model: FormModel, handlers: PaneHandlers): Rend
  */
 function pickerView(ui: Ui, model: FormModel, setting: Setting, handlers: PaneHandlers): RenderElement {
   const { Box, Button, Text } = ui
+  const keep = keepSpaces(model.surface)
   const current = model.draft[setting.id]
   /** Labels padded to the longest, so the swatches start in one column. */
   const width = Math.max(...setting.options.map(option => option.label.length))
   return (
     <Box flexDirection="column" paddingX={1}>
-      {headerView(ui, model.surface, handlers, () => void handlers.editDraft({ picking: null }))}
-      <Text bold>{setting.question}</Text>
-      <Box flexDirection="column" marginTop={1}>
+      {headerView(ui, model.surface, handlers, () => void handlers.editDraft({ picking: null }), setting.question)}
+      <Box flexDirection="column">
         {setting.options.map(option => (
           <Box key={`option-row-${option.value || 'none'}`} flexDirection="row" columnGap={2}>
             <Button
               key={`${setting.id}-${option.value || 'none'}`}
-              label={`${option.value === current ? '✔' : ' '} ${option.label.padEnd(width)}`}
+              label={keep(`${option.value === current ? '✔' : ' '} ${option.label.padEnd(width)}`)}
               plain
               autoFocus={option.value === current ? true : undefined}
               onPress={() => void handlers.editDraft({ [setting.id]: option.value, picking: null })}

@@ -47,7 +47,7 @@ To uninstall: `claude plugin uninstall quick-actions@claude-quick-actions`.
 
 ## Usage
 
-Type `/quick-actions` to open the pane, and again to close it. The pane has two lists.
+Type `/quick-actions` to open the pane, and again to close it. The head of the pane counts your actions, the actions on the band and its rows. The pane has two lists. When the pane is 90 columns or wider, the Band list is next to the Actions list; otherwise it is under it. A line at the bottom tells what each symbol means.
 
 **Actions** lists every saved action:
 
@@ -71,6 +71,14 @@ Type `/quick-actions` to open the pane, and again to close it. The pane has two 
 | Run Shell | Runs the command with `sh -c` in the session's directory, without Claude; the output goes to the transcript |
 
 Skills and prompts wait until Claude is idle. Shell commands run at once.
+
+## Options
+
+Set them in `/config`, or in `~/.claude/settings.json` under `pluginConfigs["quick-actions@claude-quick-actions"].options`:
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `columns` | the engine's width | Columns to ask for when the pane docks beside the transcript in the fullscreen layout (24 or more). The engine gives a docked pane at most 45% of the terminal, and a width you drag the pane to wins |
 
 ## What it can access
 
