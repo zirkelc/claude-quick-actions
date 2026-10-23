@@ -1,0 +1,9 @@
+{
+  "actions": [
+    {"id": "fetch", "label": "git fetch", "hotkey": "1", "color": "green", "kind": "shell", "text": "git fetch --prune --quiet"},
+    {"id": "review", "label": "/code-review", "hotkey": "2", "color": "blue", "kind": "command", "text": "code-review"},
+    {"id": "tests", "label": "write tests", "hotkey": "3", "color": "magenta", "kind": "fill", "text": "Write vitest tests for retry() in src/retry.test.ts"},
+    {"id": "explain", "label": "explain diff", "hotkey": "4", "color": "red", "kind": "submit", "text": "Explain the uncommitted diff in two short bullet points. Do not change any file."}
+  ],
+  "order": ["fetch", "review", "tests", "explain"]
+}

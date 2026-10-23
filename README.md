@@ -5,7 +5,8 @@
 <p align="center">One-click buttons above the Claude Code prompt for the skills, prompts and shell commands you run all the time</p>
 
 <picture>
-  <img src="assets/quick-actions.png" alt="A Claude Code session with the quick actions band above the prompt: git pull, review diff, /commit and /release as colored buttons" width="800" />
+  <source media="(prefers-color-scheme: dark)" srcset="assets/quick-actions-dark.gif" />
+  <img src="assets/quick-actions-light.gif" alt="A Claude Code session with the quick actions band above the prompt: hotkey 1 runs git fetch, hotkey 3 fills the prompt box with a saved prompt, hotkey 2 runs the /code-review skill and Claude reviews the diff, then /quick-actions opens the pane beside the chat" />
 </picture>
 
 </div>
@@ -46,6 +47,11 @@ claude --plugin-dir ./claude-quick-actions
 To uninstall: `claude plugin uninstall quick-actions@claude-quick-actions`.
 
 ## Usage
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/quick-actions-pane-dark.png" />
+  <img src="assets/quick-actions-pane-light.png" alt="The quick actions pane beside a finished code review: the Actions list and the Band list with git fetch, /code-review, write tests and explain diff, and the band of colored buttons above the prompt" />
+</picture>
 
 Type `/quick-actions` to open the pane, and again to close it. The head of the pane counts your actions, the actions on the band and its rows. The pane has two lists. When the pane is 90 columns or wider, the Band list is next to the Actions list; otherwise it is under it. A line at the bottom tells what each symbol means.
 
