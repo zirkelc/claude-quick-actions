@@ -32,10 +32,14 @@ Claude Code 2.1.287 or later, where mods load by default.
 
 ## Install
 
-```sh
-claude plugin marketplace add zirkelc/claude-quick-actions
-claude plugin install quick-actions@claude-quick-actions --scope user
+Type these commands at the prompt of a Claude Code terminal session:
+
 ```
+/plugin marketplace add zirkelc/agent-plugins
+/plugin install quick-actions@zirkelc
+```
+
+Select a scope (user scope is the default).
 
 To try it for one session without installing:
 
@@ -44,7 +48,7 @@ git clone https://github.com/zirkelc/claude-quick-actions.git
 claude --plugin-dir ./claude-quick-actions
 ```
 
-To uninstall: `claude plugin uninstall quick-actions@claude-quick-actions`.
+To uninstall: `/plugin uninstall quick-actions@zirkelc`.
 
 ## Usage
 
@@ -80,7 +84,7 @@ Skills and prompts wait until Claude is idle. Shell commands run at once.
 
 ## Options
 
-Set them in `/config`, or in `~/.claude/settings.json` under `pluginConfigs["quick-actions@claude-quick-actions"].options`:
+Set them in `/config`, or in `~/.claude/settings.json` under `pluginConfigs["quick-actions@zirkelc"].options`:
 
 | Option | Default | What it does |
 | --- | --- | --- |
